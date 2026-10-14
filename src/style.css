@@ -1184,3 +1184,27 @@ body{background:#f3f4ef;color:#182b33;font-size:14px}
 @media(max-width:520px){.app-shell{padding:0 10px}.analysis-panel{padding:15px}.map-wrap{min-height:420px}.legend span{font-size:9px}.search-box{height:44px}.map-coordinates{top:52px;bottom:auto;right:8px}}
 .map-shell .leaflet-tile-pane{filter:none}
 .synthetic-banner{pointer-events:none}
+
+/* Civic atlas direction: mineral paper, waterline blue, and readable source evidence. */
+:root{color:#202f36;background:#efeee6;--ink:#202f36;--muted:#69777a;--line:#d2d8d1;--green:#24778a;--deep:#1b3d48;--mint:#e2eeeb;--gold:#b55e3d;--surface:#f8f7f0}
+body{background:#efeee6;color:#202f36}
+.app-shell{background:#efeee6}
+.topbar{background:#efeee6;border-color:#d2d8d1}
+.brand{font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:600;color:#203640}
+.brand-mark{background:#d8e8e4;color:#1d6976;border-radius:3px}
+.workspace{grid-template-columns:minmax(0,1fr) minmax(340px,370px);gap:18px}
+.analysis-panel{background:#f8f7f0;border-color:#d2d8d1;border-radius:3px;box-shadow:none}
+.panel-heading h1{font-family:Georgia,"Times New Roman",serif;font-size:26px;font-weight:500}
+.map-wrap{border-color:#c9d2cb;border-radius:3px;box-shadow:none}
+.search-box,.asset-upload,.location-card,.summary-card,.source-card{border-radius:3px}
+.search-box,.tool,.icon-button{border-color:#c9d2cb;border-radius:3px}
+.search-box button,.finish-button,.small-primary,.export-button{background:#24778a}
+.tool.active{background:#dcebe8;border-color:#78a9ad;color:#185f6c}
+.location-card{background:#e8ece6;border-color:#d2d8d1}
+.summary-card{background:#e4eeea;border-color:#c9d8d1}
+.disclaimer{color:#7c523e}
+.asset-results{border-color:#e0c2ab;background:#f4e9df}
+.asset-counts strong{color:#9d4f32}
+.footer{color:#69777a}
+@media(max-width:1100px){.workspace{grid-template-columns:minmax(0,1fr) 340px}}
+@media(max-width:850px){.workspace{grid-template-columns:minmax(0,1fr)}.map-column,.analysis-panel{width:100%;min-width:0}.map-wrap{min-height:56vh}}

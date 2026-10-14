@@ -92,5 +92,9 @@ test('first visit is a labeled working example and fits a phone screen', async (
   await expect(page.getByText('SYNTHETIC DEMO · NOT FEMA DATA')).toBeVisible();
   await expect(page.getByText('Area within synthetic demo shapes')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.waitForFunction(
+    () => [...document.querySelectorAll('.leaflet-tile')].filter((tile) => tile.complete && tile.naturalWidth > 0).length >= 5,
+    { timeout: 12000 }
+  );
   await page.screenshot({ path: 'docs/screenshots/mobile.png', fullPage: true });
 });
