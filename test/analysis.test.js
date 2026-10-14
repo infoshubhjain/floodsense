@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import booleanIntersects from '@turf/boolean-intersects';
 import {
   analyzeAssets,
+  boundsOverlap,
+  geometryBounds,
   LIMITS,
   summarize,
   validateAssets,
@@ -238,5 +241,67 @@ test('enforces a returned-feature ceiling', () => {
   assert.throws(
     () => summarize(sample, Array(LIMITS.features + 1).fill(zone(sample.geometry.coordinates))),
     /too many features/
+  );
+});
+
+test('bbox prefilter preserves sparse asset intersections and boundary-touch candidates', () => {
+  const zones = Array.from({ length: 500 }, (_, i) => {
+    const x = -126 + (i % 25) * 0.1;
+    const y = 29 + Math.floor(i / 25) * 0.1;
+    return zone(
+      [
+        [
+          [x, y],
+          [x + 0.04, y],
+          [x + 0.04, y + 0.04],
+          [x, y + 0.04],
+          [x, y]
+        ]
+      ],
+      { FLD_ZONE: 'Z' + i, ZONE_SUBTY: null, SFHA_TF: 'T' }
+    );
+  });
+  const assets = Array.from({ length: 500 }, (_, i) => {
+    const x = -126 + (i % 25) * 0.1;
+    const y = 29 + Math.floor(i / 25) * 0.1;
+    return {
+      type: 'Feature',
+      properties: { asset_id: 'A' + i },
+      geometry: { type: 'Point', coordinates: [x + 0.04, y + 0.02] }
+    };
+  });
+  const candidates = assets.reduce(
+    (count, asset) =>
+      count +
+      zones.filter((z) => boundsOverlap(geometryBounds(asset.geometry), geometryBounds(z.geometry)))
+        .length,
+    0
+  );
+  assert.equal(candidates, 500);
+  const aoi = {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [-126.1, 28.9],
+          [-123.4, 28.9],
+          [-123.4, 31.1],
+          [-126.1, 31.1],
+          [-126.1, 28.9]
+        ]
+      ]
+    }
+  };
+  const optimized = analyzeAssets(aoi, zones, assets);
+  assert.equal(optimized.withinAreaCount, 500);
+  assert.equal(optimized.intersectingZoneCount, 500);
+  const reference = assets.map((asset) =>
+    zones.filter((z) => booleanIntersects(asset, z)).map((z) => z.properties.FLD_ZONE)
+  );
+  assert.deepEqual(
+    optimized.features.map((f) => f.zones),
+    reference
   );
 });

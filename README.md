@@ -87,6 +87,8 @@ npm run test:e2e
 
 Tests cover invalid CRS coordinates, invalid/self-crossing geometry, feature and AOI limits, boundary contact, point and polygon intersection, area union/deduplication, bounded asset GeoJSON and FEMA-zone intersections, malformed provider features, provider failure, provider feature limits, and explicit source-mode validation. CI runs these checks on pushes and pull requests. The browser workflow covers sample AOI → source selection → source metadata → GeoJSON export. Upload a small point/polygon FeatureCollection to test the optional asset workflow. Basemap errors display an on-map fallback while analysis and geometry editing remain available.
 
+Before exact Turf intersections, FloodSense rejects geometry pairs whose inclusive longitude/latitude bounding boxes are disjoint. This is a candidate filter only; every possible overlap still goes through the exact geometry predicate, so boundary-touch semantics remain. A deterministic sparse fixture confirms 500 exact candidates out of 250,000 possible asset-zone pairs while retaining all 500 expected touches/intersections.
+
 ## Limitations
 
 FloodSense shows effective mapped flood zones, not a predictive model or a comprehensive flood model. FEMA mapping coverage and effective dates vary; unmapped areas can still flood. The layer does not establish parcel-scale accuracy, represent every local study, or guarantee assumptions about levees and structures. It does not model rainfall-driven/pluvial flooding, changing climate or land use, future events, or site-specific drainage. A mapped absence is not proof of safety. For official maps and panel dates, consult the FEMA Map Service Center; follow local authorities for current safety information.

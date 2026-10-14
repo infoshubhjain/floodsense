@@ -9,6 +9,24 @@ import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import type { FloodFeature, SupportedGeometry, ZoneFeature, ZoneSummary } from '../shared/types.js';
 
 export const LIMITS = { bytes: 64_000, vertices: 500, areaM2: 5_000_000_000, features: 500 };
+type Bounds = [number, number, number, number];
+export function geometryBounds(geometry: Geometry): Bounds {
+  const bounds: Bounds = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = (value: unknown): void => {
+    if (!Array.isArray(value)) return;
+    if (value.length >= 2 && typeof value[0] === 'number' && typeof value[1] === 'number') {
+      bounds[0] = Math.min(bounds[0], value[0]);
+      bounds[1] = Math.min(bounds[1], value[1]);
+      bounds[2] = Math.max(bounds[2], value[0]);
+      bounds[3] = Math.max(bounds[3], value[1]);
+    } else value.forEach(visit);
+  };
+  if ('coordinates' in geometry) visit(geometry.coordinates);
+  return bounds;
+}
+export function boundsOverlap(a: Bounds, b: Bounds) {
+  return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+}
 
 const unionArea = (features: Feature<Geometry>[]) =>
   area(
@@ -82,8 +100,10 @@ export function summarize(geometry: FloodFeature, zones: ZoneFeature[]) {
   const mappedOverlaps: Feature<Geometry>[] = [];
   let mappedAreaM2 = 0;
   let intersectingCount = 0;
+  const geometryBoundsOfAOI = geometryBounds(geometry.geometry);
   for (const zone of zones) {
     if (!zone?.geometry || !zone?.properties) continue;
+    if (!boundsOverlap(geometryBoundsOfAOI, geometryBounds(zone.geometry))) continue;
     const z = feature(zone.geometry, zone.properties);
     if (!booleanIntersects(geometry, z)) continue;
     intersectingCount++;
@@ -123,10 +143,18 @@ export function analyzeAssets(
   zones: ZoneFeature[],
   assets: Feature<SupportedGeometry>[]
 ) {
-  const inside = assets.filter((asset) => booleanIntersects(geometry, asset));
+  const aoiBounds = geometryBounds(geometry.geometry);
+  const zoneBounds = zones.map((zone) => geometryBounds(zone.geometry));
+  const inside = assets.filter(
+    (asset) =>
+      boundsOverlap(aoiBounds, geometryBounds(asset.geometry)) && booleanIntersects(geometry, asset)
+  );
   const byZone = new Map<string, { zone: string; assetCount: number }>();
   const features = inside.map((asset, index) => {
-    const overlaps = zones.filter((zone) => booleanIntersects(asset, zone));
+    const assetBounds = geometryBounds(asset.geometry);
+    const overlaps = zones.filter(
+      (zone, i) => boundsOverlap(assetBounds, zoneBounds[i]!) && booleanIntersects(asset, zone)
+    );
     const zoneLabels = [...new Set(overlaps.map((zone) => zone.properties.FLD_ZONE || 'Unknown'))];
     for (const zone of zoneLabels) {
       const row = byZone.get(zone) || { zone, assetCount: 0 };
