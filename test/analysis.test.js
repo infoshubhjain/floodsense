@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LIMITS, summarize, validateGeometry } from '../server/analysis.js';
+import {
+  analyzeAssets,
+  LIMITS,
+  summarize,
+  validateAssets,
+  validateGeometry,
+  validateProviderZones
+} from '../server/analysis.js';
 
 const sample = {
   type: 'Feature',
@@ -22,6 +29,50 @@ const zone = (coordinates, properties = { FLD_ZONE: 'AE', ZONE_SUBTY: null, SFHA
   type: 'Feature',
   properties,
   geometry: { type: 'Polygon', coordinates }
+});
+
+test('validates a bounded GeoJSON asset collection and reports mapped-zone intersections', () => {
+  const assets = validateAssets({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { name: 'Clinic' },
+        geometry: { type: 'Point', coordinates: [-93.265, 44.975] }
+      },
+      {
+        type: 'Feature',
+        properties: { name: 'Library' },
+        geometry: { type: 'Point', coordinates: [-93.255, 44.975] }
+      }
+    ]
+  });
+  const zones = [
+    zone([
+      [
+        [-93.27, 44.97],
+        [-93.26, 44.97],
+        [-93.26, 44.98],
+        [-93.27, 44.98],
+        [-93.27, 44.97]
+      ]
+    ])
+  ];
+  const result = analyzeAssets(sample, zones, assets);
+  assert.equal(result.uploadedCount, 2);
+  assert.equal(result.withinAreaCount, 1);
+  assert.equal(result.intersectingZoneCount, 1);
+  assert.deepEqual(result.byZone, [{ zone: 'AE', assetCount: 1 }]);
+  assert.equal(result.features[0].label, 'Clinic');
+  assert.throws(() => validateAssets({ type: 'FeatureCollection', features: [] }), /1–500/);
+});
+
+test('rejects malformed provider flood-zone features rather than treating them as empty data', () => {
+  assert.throws(
+    () => validateProviderZones([{ type: 'Feature', properties: {}, geometry: null }]),
+    /malformed flood-zone/
+  );
+  assert.deepEqual(validateProviderZones([]), []);
 });
 
 function laeaReferenceArea(ring) {

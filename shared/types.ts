@@ -35,4 +35,12 @@ export type AnalysisResult = {
   source: SourceMetadata;
   mode: 'live' | 'synthetic';
   cached: boolean;
+  assets?: {
+    source: string;
+    uploadedCount: number;
+    withinAreaCount: number;
+    intersectingZoneCount: number;
+    byZone: { zone: string; assetCount: number }[];
+    features: { label: string; geometry: SupportedGeometry; exposed: boolean; zones: string[] }[];
+  };
 };

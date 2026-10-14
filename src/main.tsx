@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import L from 'leaflet';
-import type { FeatureCollection } from 'geojson';
+import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import 'leaflet/dist/leaflet.css';
 import './style.css';
 import type { AnalysisResult, FloodFeature, ZoneFeature } from '../shared/types.js';
@@ -17,6 +17,8 @@ type MapProps = {
   onMapPoint: (feature: FloodFeature) => void;
   onMapMove: (center: [number, number]) => void;
   onMapReady: (map: MapHandle) => void;
+  tileUrl: string;
+  assets: Feature<Geometry>[];
 };
 
 const START: FloodFeature = {
@@ -46,12 +48,15 @@ function FloodMap({
   drawMode,
   onMapPoint,
   onMapMove,
-  onMapReady
+  onMapReady,
+  tileUrl,
+  assets
 }: MapProps) {
   const root = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapHandle | null>(null);
   const overlay = useRef<L.GeoJSON | null>(null);
   const drawn = useRef<L.GeoJSON | null>(null);
+  const assetOverlay = useRef<L.GeoJSON | null>(null);
   const draft = useRef<L.LayerGroup | null>(null);
   const points = useRef<number[][]>([]);
   const handlers = useRef({ onMapPoint, onMapMove, drawMode });
@@ -72,11 +77,25 @@ function FloodMap({
     const mapHandle = map as MapHandle;
     mapRef.current = mapHandle;
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const tiles = L.tileLayer(tileUrl, {
       maxZoom: 19,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
+    const tileWarning = new L.Control({ position: 'topright' });
+    tileWarning.onAdd = () => {
+      const node = L.DomUtil.create('div', 'basemap-warning');
+      node.textContent = 'Basemap unavailable · geometry and results remain usable';
+      node.hidden = true;
+      tiles.on('tileerror', () => {
+        node.hidden = false;
+      });
+      tiles.on('tileload', () => {
+        node.hidden = true;
+      });
+      return node;
+    };
+    tileWarning.addTo(map);
     L.control.scale({ imperial: false, position: 'bottomleft', maxWidth: 120 }).addTo(map);
     readyCallback.current(mapHandle);
     map.on('moveend', () => {
@@ -129,7 +148,7 @@ function FloodMap({
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [tileUrl]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -156,6 +175,23 @@ function FloodMap({
         }).addTo(mapRef.current)
       : null;
   }, [zones]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (assetOverlay.current) mapRef.current.removeLayer(assetOverlay.current);
+    assetOverlay.current = assets.length
+      ? L.geoJSON({ type: 'FeatureCollection', features: assets } as FeatureCollection, {
+          style: { color: '#9e641b', weight: 3, fillColor: '#e7af58', fillOpacity: 0.25 },
+          pointToLayer: (_feature, latlng) =>
+            L.circleMarker(latlng, {
+              radius: 6,
+              color: '#9e641b',
+              fillColor: '#e7af58',
+              fillOpacity: 0.9
+            })
+        }).addTo(mapRef.current)
+      : null;
+  }, [assets]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -204,6 +240,8 @@ function App() {
   const [geojsonText, setGeojsonText] = useState('');
   const [showGeometry, setShowGeometry] = useState(false);
   const [showMethod, setShowMethod] = useState(false);
+  const [assets, setAssets] = useState<Feature<Geometry>[]>([]);
+  const [assetNote, setAssetNote] = useState('');
   const seq = useRef(0);
   const counts = useMemo(() => result?.byClass || [], [result]);
 
@@ -217,7 +255,11 @@ function App() {
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ geometry: g, mode: m })
+          body: JSON.stringify({
+            geometry: g,
+            mode: m,
+            ...(assets.length ? { assets: { type: 'FeatureCollection', features: assets } } : {})
+          })
         });
         const data = (await res.json()) as AnalysisResult & { error?: string };
         if (!res.ok) throw new Error(data.error || 'Analysis failed.');
@@ -231,7 +273,7 @@ function App() {
         if (run === seq.current) setBusy(false);
       }
     },
-    [geometry, mode]
+    [assets, geometry, mode]
   );
 
   useEffect(() => {
@@ -333,7 +375,20 @@ function App() {
     const output = {
       type: 'FeatureCollection',
       crs: { type: 'name', properties: { name: 'EPSG:4326' } },
-      features: [geometry, ...result.zones],
+      features: [
+        geometry,
+        ...result.zones,
+        ...(result.assets?.features.map((item) => ({
+          type: 'Feature' as const,
+          geometry: item.geometry,
+          properties: {
+            featureType: 'user-uploaded-asset',
+            label: item.label,
+            intersectsMappedZone: item.exposed,
+            zones: item.zones
+          }
+        })) || [])
+      ],
       properties: {
         title: 'FloodSense flood exposure screening',
         generatedAt: new Date().toISOString(),
@@ -345,7 +400,8 @@ function App() {
               : 'Spatial intersection of user-selected geometry with mapped FEMA NFHL flood-zone polygons',
           intersectingFeatureCount: result.intersectingCount,
           mappedIntersectionAreaM2: result.mappedAreaM2,
-          categories: result.byClass
+          categories: result.byClass,
+          assetExposure: result.assets || null
         },
         coordinateReferenceSystem: 'EPSG:4326 (output); FEMA source coordinates EPSG:4269 (NAD83)',
         resolution: result.source.maxResolution,
@@ -419,6 +475,61 @@ function App() {
               Address searches go to the U.S. Census Geocoder; live geometry goes to FEMA;
               OpenStreetMap receives map tile requests. FloodSense does not store selections.
             </p>
+            <div className="asset-upload">
+              <label htmlFor="asset-file">
+                Optional asset GeoJSON · buildings, roads, facilities
+              </label>
+              <input
+                id="asset-file"
+                type="file"
+                accept=".geojson,.json,application/geo+json,application/json"
+                onChange={async (event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = '';
+                  if (!file) return;
+                  if (file.size > 1_000_000) {
+                    setAssetNote('Asset GeoJSON must be 1 MB or smaller.');
+                    return;
+                  }
+                  try {
+                    const parsed = JSON.parse(await file.text()) as FeatureCollection;
+                    if (
+                      parsed.type !== 'FeatureCollection' ||
+                      !Array.isArray(parsed.features) ||
+                      !parsed.features.length ||
+                      parsed.features.length > 500
+                    )
+                      throw new Error(
+                        'Choose a GeoJSON FeatureCollection with 1–500 asset features.'
+                      );
+                    setAssets(parsed.features as Feature<Geometry>[]);
+                    setAssetNote(
+                      `${parsed.features.length} user-supplied assets loaded; analysis will intersect them with the selected mapped zones.`
+                    );
+                  } catch (error) {
+                    setAssetNote(
+                      error instanceof Error ? error.message : 'Could not read this GeoJSON file.'
+                    );
+                  }
+                }}
+              />
+              {assetNote && <p role="status">{assetNote}</p>}
+              {assets.length > 0 && (
+                <button
+                  className="text-tool"
+                  onClick={() => {
+                    setAssets([]);
+                    setAssetNote('Uploaded assets cleared.');
+                  }}
+                >
+                  Clear asset dataset
+                </button>
+              )}
+              <small>
+                EPSG:4326 point, line, or polygon features · max 500 features / 1 MB. Data is sent
+                for this analysis and not saved.
+              </small>
+            </div>
             <div className="map-tool-row">
               <span className="tool-label">SELECT AREA</span>
               <button
@@ -496,6 +607,16 @@ function App() {
                 )
               }
               onMapReady={setMap}
+              tileUrl={
+                import.meta.env.VITE_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+              }
+              assets={
+                result?.assets?.features.map((item) => ({
+                  type: 'Feature',
+                  properties: { label: item.label },
+                  geometry: item.geometry
+                })) || []
+              }
             />
             <div className="map-top-tags">
               <span className="map-tag">
@@ -519,6 +640,11 @@ function App() {
               <span>
                 <i className="legend-outline" /> Selected geometry
               </span>
+              {result?.assets && (
+                <span>
+                  <i className="legend-asset" /> User-supplied assets
+                </span>
+              )}
             </div>
             <div className="map-coordinates">
               {center[0].toFixed(4)}° N&nbsp; {Math.abs(center[1]).toFixed(4)}° W
@@ -640,6 +766,57 @@ function App() {
                   <span>{result.byClass.length} mapped classes</span>
                 </div>
               </div>
+              {result.assets && (
+                <section className="asset-results" aria-labelledby="asset-results-title">
+                  <div className="section-title">
+                    <span id="asset-results-title">ASSET-LEVEL SCREENING</span>
+                    <span>
+                      USER DATA · {result.mode === 'synthetic' ? 'SYNTHETIC ZONES' : 'FEMA NFHL'}
+                    </span>
+                  </div>
+                  <p>{result.assets.source}</p>
+                  <div className="asset-counts">
+                    <strong>{result.assets.intersectingZoneCount}</strong>
+                    <span>
+                      of {result.assets.withinAreaCount} assets inside the selected area intersect
+                      mapped zones
+                    </span>
+                  </div>
+                  <small>
+                    {result.assets.uploadedCount} uploaded ·{' '}
+                    {result.assets.uploadedCount - result.assets.withinAreaCount} outside the
+                    selected area
+                  </small>
+                  {result.assets.byZone.length > 0 && (
+                    <ul>
+                      {result.assets.byZone.map((item) => (
+                        <li key={item.zone}>
+                          Zone {item.zone}: {item.assetCount} asset
+                          {item.assetCount === 1 ? '' : 's'}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <details>
+                    <summary>Inspect asset results ({result.assets.features.length})</summary>
+                    <ul>
+                      {result.assets.features.slice(0, 100).map((item, index) => (
+                        <li key={`${item.label}-${index}`}>
+                          <strong>{item.label}</strong> ·{' '}
+                          {item.exposed
+                            ? `intersects ${item.zones.join(', ')}`
+                            : 'no returned zone intersection'}
+                        </li>
+                      ))}
+                    </ul>
+                    {result.assets.features.length > 100 && (
+                      <small>
+                        Showing first 100 assets; full details are included in GeoJSON export.
+                      </small>
+                    )}
+                  </details>
+                </section>
+              )}
               <div className="class-list">
                 <div className="section-title">
                   <span>ZONE BREAKDOWN</span>

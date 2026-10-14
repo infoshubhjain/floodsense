@@ -10,5 +10,5 @@
     "types": ["node", "geojson"],
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*.tsx", "server/**/*.ts"]
+  "include": ["src/**/*.tsx", "src/**/*.d.ts", "server/**/*.ts"]
 }

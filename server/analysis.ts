@@ -5,7 +5,7 @@ import kinks from '@turf/kinks';
 import { feature, featureCollection } from '@turf/helpers';
 import intersect from '@turf/intersect';
 import union from '@turf/union';
-import type { Feature, Geometry } from 'geojson';
+import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import type { FloodFeature, SupportedGeometry, ZoneFeature, ZoneSummary } from '../shared/types.js';
 
 export const LIMITS = { bytes: 64_000, vertices: 500, areaM2: 5_000_000_000, features: 500 };
@@ -116,6 +116,89 @@ export function summarize(geometry: FloodFeature, zones: ZoneFeature[]) {
     if (item) item.areaM2 = unionArea(overlaps);
   }
   return { intersectingCount, mappedAreaM2, byClass: [...byClass.values()] };
+}
+
+export function analyzeAssets(
+  geometry: FloodFeature,
+  zones: ZoneFeature[],
+  assets: Feature<SupportedGeometry>[]
+) {
+  const inside = assets.filter((asset) => booleanIntersects(geometry, asset));
+  const byZone = new Map<string, { zone: string; assetCount: number }>();
+  const features = inside.map((asset, index) => {
+    const overlaps = zones.filter((zone) => booleanIntersects(asset, zone));
+    const zoneLabels = [...new Set(overlaps.map((zone) => zone.properties.FLD_ZONE || 'Unknown'))];
+    for (const zone of zoneLabels) {
+      const row = byZone.get(zone) || { zone, assetCount: 0 };
+      row.assetCount++;
+      byZone.set(zone, row);
+    }
+    const properties = asset.properties || {};
+    const label = String(
+      properties.name || properties.label || properties.asset_id || `Asset ${index + 1}`
+    ).slice(0, 120);
+    return { label, geometry: asset.geometry, exposed: zoneLabels.length > 0, zones: zoneLabels };
+  });
+  return {
+    source:
+      'User-supplied GeoJSON assets intersected with the selected FEMA/demonstration polygons',
+    uploadedCount: assets.length,
+    withinAreaCount: inside.length,
+    intersectingZoneCount: features.filter((item) => item.exposed).length,
+    byZone: [...byZone.values()],
+    features
+  };
+}
+
+export function validateAssets(input: unknown): Feature<SupportedGeometry>[] {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    (input as { type?: unknown }).type !== 'FeatureCollection' ||
+    !Array.isArray((input as { features?: unknown }).features)
+  )
+    throw new Error('Upload a GeoJSON FeatureCollection of assets.');
+  const collection = input as FeatureCollection;
+  if (!collection.features.length || collection.features.length > LIMITS.features)
+    throw new Error(`Asset GeoJSON must contain 1–${LIMITS.features} features.`);
+  return collection.features.map((asset) => validateGeometry(asset) as Feature<SupportedGeometry>);
+}
+
+export function validateProviderZones(input: unknown): ZoneFeature[] {
+  if (!Array.isArray(input) || input.length > LIMITS.features)
+    throw new Error('FEMA returned an invalid or oversized feature collection.');
+  let vertices = 0;
+  for (const zone of input) {
+    if (
+      zone?.type !== 'Feature' ||
+      zone.geometry?.type !== 'Polygon' ||
+      !zone.properties ||
+      typeof zone.properties !== 'object'
+    )
+      throw new Error('FEMA returned a malformed flood-zone feature.');
+    for (const ring of zone.geometry.coordinates || []) {
+      if (!Array.isArray(ring)) throw new Error('FEMA returned malformed polygon coordinates.');
+      vertices += ring.length;
+      if (
+        ring.length < 4 ||
+        ring.some(
+          (point: unknown) =>
+            !Array.isArray(point) ||
+            point.length < 2 ||
+            !Number.isFinite(point[0]) ||
+            !Number.isFinite(point[1]) ||
+            point[0] < -180 ||
+            point[0] > 180 ||
+            point[1] < -90 ||
+            point[1] > 90
+        )
+      )
+        throw new Error('FEMA returned malformed polygon coordinates.');
+    }
+    if (vertices > 100_000 || !booleanValid(zone as never) || kinks(zone as never).features.length)
+      throw new Error('FEMA returned invalid or excessively detailed polygon geometry.');
+  }
+  return input as ZoneFeature[];
 }
 
 export function toEsriGeometry(geometry: SupportedGeometry) {

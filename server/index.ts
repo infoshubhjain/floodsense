@@ -3,7 +3,15 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { LIMITS, summarize, toEsriGeometry, validateGeometry } from './analysis.js';
+import {
+  analyzeAssets,
+  LIMITS,
+  summarize,
+  toEsriGeometry,
+  validateAssets,
+  validateGeometry,
+  validateProviderZones
+} from './analysis.js';
 import { syntheticZones } from './synthetic.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { AnalysisResult, FloodFeature, SourceMetadata, ZoneFeature } from '../shared/types.js';
@@ -12,10 +20,16 @@ const app = express();
 const dir = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 4173;
 const FEMA = 'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query';
+const TILE_URL = process.env.VITE_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const tileOrigin = new URL(
+  TILE_URL.replaceAll('{z}', '0').replaceAll('{x}', '0').replaceAll('{y}', '0')
+).origin;
+if (!tileOrigin.startsWith('https://')) throw new Error('VITE_TILE_URL must use HTTPS.');
 const cache = new Map<string, { at: number; result: AnalysisResult }>();
 const requests = new Map<string, number[]>();
 let liveQueries = 0;
 const MAX_PROVIDER_BYTES = 8_000_000;
+const MAX_ASSET_BYTES = 1_000_000;
 const TTL = 5 * 60_000;
 const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
 if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5)
@@ -30,8 +44,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'DENY',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy':
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    'Content-Security-Policy': `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${tileOrigin}; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`
   });
   const origin = req.get('origin');
   const allowed = process.env.ALLOWED_ORIGIN
@@ -48,7 +61,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       .sendStatus(204);
   next();
 });
-app.use(express.json({ limit: `${LIMITS.bytes}b`, type: 'application/json' }));
+app.use(express.json({ limit: '1200kb', type: 'application/json' }));
 
 function withinRateLimit(req: Request) {
   const key = req.ip || req.socket.remoteAddress || 'unknown';
@@ -167,6 +180,20 @@ app.post('/api/analyze', async (req, res) => {
       .status(400)
       .json({ error: error instanceof Error ? error.message : 'Invalid geometry.' });
   }
+  if (Buffer.byteLength(JSON.stringify(req.body?.geometry ?? null)) > LIMITS.bytes)
+    return res.status(413).json({ error: 'Selected geometry exceeds the 64 KB limit.' });
+  let assets;
+  if (req.body?.assets !== undefined) {
+    if (Buffer.byteLength(JSON.stringify(req.body.assets)) > MAX_ASSET_BYTES)
+      return res.status(413).json({ error: 'Asset GeoJSON must be 1 MB or smaller.' });
+    try {
+      assets = validateAssets(req.body.assets);
+    } catch (error) {
+      return res
+        .status(400)
+        .json({ error: error instanceof Error ? error.message : 'Invalid asset GeoJSON.' });
+    }
+  }
   const useSynthetic = req.body?.mode === 'synthetic';
   if (req.body?.mode !== 'live' && !useSynthetic)
     return res
@@ -180,7 +207,11 @@ app.post('/api/analyze', async (req, res) => {
   const key = createHash('sha256').update(JSON.stringify({ geometry, useSynthetic })).digest('hex');
   const cached = cache.get(key);
   if (!useSynthetic && cached && Date.now() - cached.at < TTL)
-    return res.json({ ...cached.result, cached: true });
+    return res.json({
+      ...cached.result,
+      ...(assets ? { assets: analyzeAssets(geometry, cached.result.zones, assets) } : {}),
+      cached: true
+    });
   if (!useSynthetic && liveQueries >= 4)
     return res
       .status(503)
@@ -225,7 +256,7 @@ app.post('/api/analyze', async (req, res) => {
         exceededTransferLimit?: boolean;
       };
       if (data.error) throw new Error('FEMA reported a query error.');
-      zones = data.features || [];
+      zones = validateProviderZones(data.features);
       if (data.exceededTransferLimit || zones.length > LIMITS.features)
         return res.status(422).json({
           error:
@@ -256,6 +287,13 @@ app.post('/api/analyze', async (req, res) => {
       mode: useSynthetic ? 'synthetic' : 'live',
       cached: false
     };
+    if (assets)
+      result.assets = {
+        ...analyzeAssets(geometry, zones, assets),
+        source: useSynthetic
+          ? 'User-supplied GeoJSON intersected with explicitly selected synthetic demonstration polygons'
+          : 'User-supplied GeoJSON intersected with FEMA NFHL mapped polygons'
+      };
     const bytes = Buffer.byteLength(JSON.stringify(result));
     if (bytes > 5_000_000)
       return res.status(422).json({

@@ -49,3 +49,30 @@ test('text alternative accepts a point and the zone overlay control works', asyn
   await expect(page.getByText('Intersecting synthetic demo shapes')).toBeVisible();
   await expect(page.getByText('synthetic demo polygons intersect this geometry')).toBeVisible();
 });
+
+test('uploaded asset GeoJSON is screened against the selected demo zones', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('DATA SOURCE').selectOption('synthetic');
+  await expect(page.getByText('FloodSense synthetic demonstration shapes')).toBeVisible();
+  await expect(page.getByText('Area within synthetic demo shapes')).toBeVisible();
+  await page.locator('#asset-file').setInputFiles({
+    name: 'assets.geojson',
+    mimeType: 'application/geo+json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: { name: 'Test facility' },
+            geometry: { type: 'Point', coordinates: [-93.265, 44.98] }
+          }
+        ]
+      })
+    )
+  });
+  await expect(page.getByText('1 user-supplied assets loaded')).toBeVisible();
+  await expect(page.getByText('ASSET-LEVEL SCREENING')).toBeVisible();
+  await expect(page.getByText('USER DATA · SYNTHETIC ZONES')).toBeVisible();
+  await expect(page.getByText('1 uploaded · 0 outside the selected area')).toBeVisible();
+});

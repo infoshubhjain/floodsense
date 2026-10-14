@@ -87,7 +87,19 @@ test('live adapter pins FEMA fields and requests NAD83 source output in EPSG:432
   const response = await nativeFetch(`${origin}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
+    body: JSON.stringify({
+      ...input,
+      assets: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: { name: 'Clinic' },
+            geometry: { type: 'Point', coordinates: [-93.265, 44.98] }
+          }
+        ]
+      }
+    })
   });
   const result = await response.json();
   assert.equal(response.status, 200);
@@ -98,6 +110,9 @@ test('live adapter pins FEMA fields and requests NAD83 source output in EPSG:432
   assert.equal(providerUrl.searchParams.get('outFields'), 'FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID');
   assert.deepEqual(result.zones[0].geometry.coordinates[0][0], [-93.27, 44.97]);
   assert.equal(result.byClass[0].sfha, 'T');
+  assert.equal(result.assets.uploadedCount, 1);
+  assert.equal(result.assets.intersectingZoneCount, 1);
+  assert.match(result.assets.source, /FEMA NFHL/);
 });
 
 test('API validates geometry and requires explicit source mode', async () => {
