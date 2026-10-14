@@ -1,6 +1,6 @@
 # Deployment
 
-FloodSense has a single Node server and a static Vite build. There is no database, login, secret, paid data product, or separate spatial service. The repository includes a production Dockerfile; use any host only after checking that its current terms and cost fit your needs. This project has not been deployed publicly.
+FloodSense has a single Node server and a static Vite build. There is no database, login, secret, paid data product, or separate spatial service. The repository includes a production Dockerfile and `render.yaml` for an optional free Render Blueprint. Connect this repository and explicitly create the service to deploy it. No hosting account was connected from this workspace, so there is no live URL yet. Render free services can spin down while idle and have usage limits; review the [current free-plan details](https://render.com/docs/free) before deployment.
 
 ## Run the production container
 
@@ -18,4 +18,4 @@ Visit `http://localhost:4173`. `VITE_TILE_URL` configures one HTTPS XYZ tile tem
 - FEMA result cache and request counters are per-process, in-memory, and lost at restart. No scheduled refresh runs. Each new uncached query retrieves current service data; the UI displays retrieval time and cached status.
 - Monitor provider errors and rate-limit responses without recording search strings, AOI coordinates, or request bodies.
 - Recheck FEMA/Census/OSM terms and API behavior before increasing limits or adding a source.
-- Do not attach a paid service. TLS and public availability depend on the selected operator/host; there is no hosting account configured in this repository, so deployment needs a user-owned host connection.
+- The included Render blueprint uses the free web plan; do not attach a paid service without the user's approval. TLS and public availability depend on the selected operator/host; deployment still needs a user-owned host connection.
