@@ -25,6 +25,7 @@ const tileOrigin = new URL(
   TILE_URL.replaceAll('{z}', '0').replaceAll('{x}', '0').replaceAll('{y}', '0')
 ).origin;
 if (!tileOrigin.startsWith('https://')) throw new Error('VITE_TILE_URL must use HTTPS.');
+const tileOrigins = [...new Set([tileOrigin, 'https://server.arcgisonline.com', 'https://tile.openstreetmap.org'])].join(' ');
 const cache = new Map<string, { at: number; result: AnalysisResult }>();
 const requests = new Map<string, number[]>();
 let liveQueries = 0;
@@ -44,7 +45,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'DENY',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy': `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${tileOrigin}; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`
+    'Content-Security-Policy': `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${tileOrigins}; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`
   });
   const origin = req.get('origin');
   const allowed = process.env.ALLOWED_ORIGIN

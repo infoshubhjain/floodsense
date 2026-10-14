@@ -6,6 +6,11 @@ import { expect, test } from '@playwright/test';
 test('sample area → explicit demo source → metadata → provenance export', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Flood exposure' })).toBeVisible();
+  await expect(page.getByText('SYNTHETIC DEMO · NOT FEMA DATA')).toBeVisible();
+  await expect(page.getByText('Area within synthetic demo shapes')).toBeVisible();
+  await page.locator('.leaflet-control-layers-toggle').click({ force: true });
+  await page.getByLabel('Satellite imagery').check();
+  await page.getByLabel('Street map').check();
   await page.getByLabel('DATA SOURCE').selectOption('synthetic');
   await expect(page.getByText('SYNTHETIC DEMO · NOT FEMA DATA')).toBeVisible();
   await expect(page.getByText('FloodSense synthetic demonstration shapes')).toBeVisible();
@@ -75,4 +80,17 @@ test('uploaded asset GeoJSON is screened against the selected demo zones', async
   await expect(page.getByText('ASSET-LEVEL SCREENING')).toBeVisible();
   await expect(page.getByText('USER DATA · SYNTHETIC ZONES')).toBeVisible();
   await expect(page.getByText('1 uploaded · 0 outside the selected area')).toBeVisible();
+});
+
+test('first visit is a labeled working example and fits a phone screen', async ({ page }) => {
+  await page.setViewportSize({ width: 720, height: 900 });
+  await page.goto('/');
+  await expect(page.getByText('SYNTHETIC DEMO · NOT FEMA DATA')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(720);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByText('SYNTHETIC DEMO · NOT FEMA DATA')).toBeVisible();
+  await expect(page.getByText('Area within synthetic demo shapes')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: 'docs/screenshots/mobile.png', fullPage: true });
 });

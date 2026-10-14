@@ -314,6 +314,8 @@ a {
   background: #fffd;
   padding: 2px 5px;
 }
+.leaflet-control-layers { border: 1px solid #d2dcda !important; border-radius: 4px !important; box-shadow: 0 1px 4px #193b3b16 !important; }
+.leaflet-control-layers-toggle { width: 34px !important; height: 34px !important; background-size: 20px 20px !important; }
 .map-shell .leaflet-control-scale-line {
   border: 1px solid #75827d;
   border-top: 0;
@@ -1170,3 +1172,15 @@ a {
   border-radius: 50%;
   background: #e7af58;
 }
+
+/* FloodSense is a map-first field instrument, with zone colors kept semantic. */
+:root{font-family:Inter,'Avenir Next',Arial,sans-serif;color:#182b33;background:#f3f4ef;--ink:#182b33;--muted:#65777d;--line:#d6dedb;--green:#166f69;--deep:#123b42;--mint:#e3efec;--gold:#c18a33;--surface:#fbfcf8}
+body{background:#f3f4ef;color:#182b33;font-size:14px}
+.app-shell{padding:0 28px}.topbar{height:66px;border-color:#d6dedb}.brand{color:#153841}.brand-mark{background:#d8e9e4;border-radius:7px}.live-indicator{color:#5d7378;font-size:10px;letter-spacing:.11em}
+.workspace{grid-template-columns:minmax(0,1fr) 390px;gap:20px;padding-top:18px}.map-column{min-width:0}.map-wrap{border:1px solid #cad5d1;border-radius:5px;box-shadow:0 1px 3px #17393a0d}.analysis-panel{background:#fbfcf8;border-color:#d6dedb;border-radius:6px;box-shadow:0 1px 3px #17393a0d;padding:21px}.panel-heading h1{font-family:Inter,'Avenir Next',Arial,sans-serif;font-size:23px;letter-spacing:-.04em;color:#17343b}
+.search-box,.asset-upload,.location-card,.summary-card,.source-card{border-radius:5px;box-shadow:none}.search-box{border-color:#cad5d1}.search-box button,.finish-button,.small-primary{background:#176f69;border-color:#176f69}.asset-upload{background:#f5f6f1;border-color:#d6dedb}.asset-upload label{font-size:11px}.asset-upload small,.search-disclosure{font-size:10px;line-height:1.5}.map-tool-row{gap:7px}.tool{border-color:#d2dcda;border-radius:4px}.tool.active{background:#e0eeeb;border-color:#77aaa1;color:#125c58}.tool-label,.eyebrow,.summary-check,.map-tag,.legend strong{letter-spacing:.1em}.map-tag,.legend{border-color:#d4dcd8;border-radius:4px;box-shadow:0 1px 3px #193b3b16}.legend{font-size:10px}.legend span{font-size:10px}.map-foot{font-size:10px}.map-foot a{color:#176f69}.map-coordinates{font-size:10px}.location-card{background:#f0f4f1;border-color:#dce5e1}.location-card strong{font-size:12px}.location-card small{font-size:10px}.source-select select{min-height:40px;border-color:#cbd7d3;font-size:12px}.summary-card{border-color:#d6e3df;background:#f2f7f4}.summary-number{font-size:32px;font-variant-numeric:tabular-nums}.summary-top,.summary-unit,.source-meta div,.source-card a{font-size:10px}.source-meta strong{font-size:10px}.disclaimer{color:#6e5b37}.disclaimer p{font-size:10px;line-height:1.55}.export-button{background:#176f69;border-radius:4px;min-height:44px}.export-button:disabled{background:#b9c8c2}.text-button,.method-copy{font-size:11px}.text-button{color:#176f69}.footer{font-size:10px}.icon-button:focus-visible,.tool:focus-visible,.search-box button:focus-visible,.export-button:focus-visible{outline:3px solid #42958d;outline-offset:2px}
+@media(max-width:1100px){.app-shell{padding:0 18px}.workspace{grid-template-columns:minmax(0,1fr) 350px;gap:14px}}
+@media(max-width:850px){.app-shell{padding:0 14px}.workspace{grid-template-columns:1fr}.map-wrap{min-height:56vh}.analysis-panel{background:#fbfcf8}}
+@media(max-width:520px){.app-shell{padding:0 10px}.analysis-panel{padding:15px}.map-wrap{min-height:420px}.legend span{font-size:9px}.search-box{height:44px}.map-coordinates{top:52px;bottom:auto;right:8px}}
+.map-shell .leaflet-tile-pane{filter:none}
+.synthetic-banner{pointer-events:none}

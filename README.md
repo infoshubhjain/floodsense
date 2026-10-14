@@ -2,13 +2,15 @@
 
 FloodSense is a map-based screening tool for exploring mapped flood-zone overlap around places and infrastructure. It is an educational screening application, **not** an official flood determination, emergency warning, insurance decision, engineering study, or substitute for local authorities.
 
-The starting sample is Downtown Minneapolis. Search a US street address with the U.S. Census Geocoder, or enter `longitude, latitude` in EPSG:4326. Draw a point, line, or polygon on the map, or use the GeoJSON editor as a keyboard-operable alternative. Choose FEMA effective flood zones for live results or explicitly select the clearly labeled synthetic demo shapes. Optionally load a bounded GeoJSON FeatureCollection (up to 500 point, line, or polygon assets / 1 MB) to screen user-supplied buildings, roads, or facilities against the returned polygons.
+The starting sample is Downtown Minneapolis with an explicitly labeled synthetic example, so the first visit works without an external provider. Choose FEMA effective flood zones for live results. Search a US street address with the U.S. Census Geocoder, or enter `longitude, latitude` in EPSG:4326. Draw a point, line, or polygon on the map, or use the GeoJSON editor as a keyboard-operable alternative. Optionally load a bounded GeoJSON FeatureCollection (up to 500 point, line, or polygon assets / 1 MB) to screen user-supplied buildings, roads, or facilities against the returned polygons.
 
 ## Sample screen
 
 The screenshot below is from the E2E demo flow. All overlay polygons in this view are synthetic illustrations, not FEMA data.
 
 ![FloodSense synthetic demo screening](docs/screenshots/demo.png)
+
+[Mobile workflow screenshot](docs/screenshots/mobile.png)
 
 ## Run locally
 
@@ -66,11 +68,11 @@ The main polygon total is the area inside NFHL zone polygons, including minimal-
 
 ## Data, terms, and attribution
 
-See [the source and license ledger](docs/data-sources.md), [methodology and limits](docs/methodology.md), and [deployment guide](docs/deployment.md). FEMA NFHL and US Census Geocoder are the only analytical source providers; A configurable public tile service supplies the display basemap (OpenStreetMap by default). Provider availability, map panels, geocoder benchmarks, terms, and usage policies can change. Review the linked primary documentation before changing endpoints or refreshing source behavior.
+See [the source and license ledger](docs/data-sources.md), [methodology and limits](docs/methodology.md), and [deployment guide](docs/deployment.md). FEMA NFHL and US Census Geocoder are the only analytical source providers; OpenStreetMap is the default display basemap, with Esri World Imagery available as an alternative. Basemap imagery is visual context, not flood data. Provider availability, map panels, geocoder benchmarks, terms, and usage policies can change. Review the linked primary documentation before changing endpoints or refreshing source behavior.
 
 ## Privacy and security
 
-FloodSense requires no account and stores no address or geometry persistently. Address text is sent to the U.S. Census Geocoder for matching. In live mode, the selected geometry is sent through the FloodSense backend to FEMA for spatial querying. If assets are uploaded, their GeoJSON features are sent with that request and processed in memory; they are not cached or persisted. OpenStreetMap receives requests for visible basemap tiles. FloodSense does not log request bodies or exact locations. FEMA query results and rate-limit counters are held in process memory only; provider responses use `Cache-Control: no-store` to prevent browser/proxy storage. See the disclosure beside the address search.
+FloodSense requires no account and stores no address or geometry persistently. Address text is sent to the U.S. Census Geocoder for matching. In live mode, the selected geometry is sent through the FloodSense backend to FEMA for spatial querying. If assets are uploaded, their GeoJSON features are sent with that request and processed in memory; they are not cached or persisted. The selected basemap provider receives requests for visible tiles; imagery is display-only and is not used in the analysis. FloodSense does not log request bodies or exact locations. FEMA query results and rate-limit counters are held in process memory only; provider responses use `Cache-Control: no-store` to prevent browser/proxy storage. See the disclosure beside the address search.
 
 The API uses fixed provider URLs, bounded response streaming, input/query/response limits, timeouts, one bounded retry, in-memory result caching, a four-query concurrency limit, per-IP request limits, restrictive CORS, safe error messages, and security headers. For TLS termination behind a reverse proxy, set `TRUST_PROXY_HOPS` to the exact trusted hop count; the default `0` ignores forwarded protocol and IP headers. Never set an untrusted `ALLOWED_ORIGIN` wildcard.
 
