@@ -117,3 +117,30 @@ test('API validates geometry and requires explicit source mode', async () => {
   });
   assert.equal(noMode.status, 400);
 });
+
+test('synthetic mode rejects locations outside its Minneapolis sample area', async () => {
+  const response = await nativeFetch(`${origin}/api/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...input,
+      mode: 'synthetic',
+      geometry: { ...input.geometry, geometry: { type: 'Point', coordinates: [-122.42, 37.77] } }
+    })
+  });
+  assert.equal(response.status, 422);
+  assert.match((await response.json()).error, /Minneapolis sample area/);
+});
+
+test('same-origin checks accept HTTPS forwarded by an explicitly trusted proxy', async () => {
+  const previous = app.get('trust proxy');
+  app.set('trust proxy', 1);
+  try {
+    const response = await nativeFetch(`${origin}/api/health`, {
+      headers: { Origin: `https://127.0.0.1:${new URL(origin).port}`, 'X-Forwarded-Proto': 'https' }
+    });
+    assert.equal(response.status, 200);
+  } finally {
+    app.set('trust proxy', previous);
+  }
+});

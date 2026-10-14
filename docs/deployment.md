@@ -9,7 +9,7 @@ docker build -t floodsense .
 docker run --rm -p 4173:4173 -e PORT=4173 floodsense
 ```
 
-Visit `http://localhost:4173`. Put a production instance behind HTTPS. If the browser frontend is served from a different exact origin, configure `ALLOWED_ORIGIN` to that origin. Keep the API and frontend same-origin where possible. Do not use `*` for CORS. Only trust proxy headers when the app is behind a proxy you operate.
+Visit `http://localhost:4173`. Put a production instance behind HTTPS. Same-origin checks use the request protocol; if TLS terminates at your reverse proxy, configure `TRUST_PROXY_HOPS` to its exact trusted hop count (usually `1`) and prevent clients from bypassing that proxy. It defaults to `0` and accepts only `0`–`5`. If the browser frontend is served from a different exact origin, configure `ALLOWED_ORIGIN` to that origin. Keep the API and frontend same-origin where possible. Do not use `*` for CORS.
 
 ## Health and operations
 

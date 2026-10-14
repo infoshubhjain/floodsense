@@ -72,7 +72,7 @@ See [the source and license ledger](docs/data-sources.md), [methodology and limi
 
 FloodSense requires no account and stores no address or geometry persistently. Address text is sent to the U.S. Census Geocoder for matching. In live mode, the selected geometry is sent through the FloodSense backend to FEMA for spatial querying. OpenStreetMap receives requests for visible basemap tiles. FloodSense does not log request bodies or exact locations. FEMA query results and rate-limit counters are held in process memory only; provider responses use `Cache-Control: no-store` to prevent browser/proxy storage. See the disclosure beside the address search.
 
-The API uses fixed provider URLs, bounded response streaming, input/query/response limits, timeouts, one bounded retry, in-memory result caching, a four-query concurrency limit, per-IP request limits, restrictive CORS, safe error messages, and security headers. For deployment behind a reverse proxy, configure origin restrictions carefully and terminate TLS at a trusted proxy. Never set an untrusted `ALLOWED_ORIGIN` wildcard.
+The API uses fixed provider URLs, bounded response streaming, input/query/response limits, timeouts, one bounded retry, in-memory result caching, a four-query concurrency limit, per-IP request limits, restrictive CORS, safe error messages, and security headers. For TLS termination behind a reverse proxy, set `TRUST_PROXY_HOPS` to the exact trusted hop count; the default `0` ignores forwarded protocol and IP headers. Never set an untrusted `ALLOWED_ORIGIN` wildcard.
 
 ## Verification
 

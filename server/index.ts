@@ -17,9 +17,13 @@ const requests = new Map<string, number[]>();
 let liveQueries = 0;
 const MAX_PROVIDER_BYTES = 8_000_000;
 const TTL = 5 * 60_000;
+const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5)
+  throw new Error('TRUST_PROXY_HOPS must be an integer from 0 to 5.');
 
 export { app };
 app.disable('x-powered-by');
+app.set('trust proxy', proxyHops);
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.set({
     'X-Content-Type-Options': 'nosniff',
@@ -168,6 +172,11 @@ app.post('/api/analyze', async (req, res) => {
     return res
       .status(400)
       .json({ error: 'Choose live FEMA data or synthetic demo data explicitly.' });
+  if (useSynthetic && summarize(geometry, syntheticZones).intersectingCount === 0)
+    return res.status(422).json({
+      error:
+        'Synthetic examples cover only the Minneapolis sample area. Reset the map selection to use them.'
+    });
   const key = createHash('sha256').update(JSON.stringify({ geometry, useSynthetic })).digest('hex');
   const cached = cache.get(key);
   if (!useSynthetic && cached && Date.now() - cached.at < TTL)
