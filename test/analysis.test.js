@@ -1,0 +1,191 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { LIMITS, summarize, validateGeometry } from '../server/analysis.js';
+
+const sample = {
+  type: 'Feature',
+  properties: {},
+  geometry: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [-93.27, 44.97],
+        [-93.26, 44.97],
+        [-93.26, 44.98],
+        [-93.27, 44.98],
+        [-93.27, 44.97]
+      ]
+    ]
+  }
+};
+const zone = (coordinates, properties = { FLD_ZONE: 'AE', ZONE_SUBTY: null, SFHA_TF: 'T' }) => ({
+  type: 'Feature',
+  properties,
+  geometry: { type: 'Polygon', coordinates }
+});
+
+function laeaReferenceArea(ring) {
+  const radians = Math.PI / 180;
+  const radius = 6_371_008.8;
+  const [lon0, lat0] = ring[0];
+  const phi0 = lat0 * radians;
+  const originLon = lon0 * radians;
+  const projected = ring.map(([lon, lat]) => {
+    const phi = lat * radians;
+    const deltaLon = lon * radians - originLon;
+    const k = Math.sqrt(
+      2 / (1 + Math.sin(phi0) * Math.sin(phi) + Math.cos(phi0) * Math.cos(phi) * Math.cos(deltaLon))
+    );
+    return [
+      radius * k * Math.cos(phi) * Math.sin(deltaLon),
+      radius *
+        k *
+        (Math.cos(phi0) * Math.sin(phi) - Math.sin(phi0) * Math.cos(phi) * Math.cos(deltaLon))
+    ];
+  });
+  let doubledArea = 0;
+  for (let i = 0; i < projected.length - 1; i++) {
+    doubledArea += projected[i][0] * projected[i + 1][1] - projected[i + 1][0] * projected[i][1];
+  }
+  return Math.abs(doubledArea) / 2;
+}
+
+test('validates 2D EPSG:4326 point, line, and polygon input', () => {
+  assert.equal(
+    validateGeometry({
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'Point', coordinates: [-93, 44] }
+    }).geometry.type,
+    'Point'
+  );
+  assert.doesNotThrow(() =>
+    validateGeometry({
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [-93, 44],
+          [-92, 45]
+        ]
+      }
+    })
+  );
+  assert.doesNotThrow(() => validateGeometry(sample));
+  assert.throws(
+    () => validateGeometry({ ...sample, geometry: { type: 'Point', coordinates: [181, 44] } }),
+    /Coordinates/
+  );
+  assert.throws(
+    () => validateGeometry({ ...sample, geometry: { type: 'Point', coordinates: [-93, 44, 20] } }),
+    /Coordinates/
+  );
+});
+
+test('rejects self-intersecting, oversized, and over-detailed polygons', () => {
+  const bowTie = {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [0, 0],
+          [1, 1],
+          [0, 1],
+          [1, 0],
+          [0, 0]
+        ]
+      ]
+    }
+  };
+  assert.throws(() => validateGeometry(bowTie), /invalid or self-intersecting/);
+  const large = {
+    ...sample,
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [-5, -5],
+          [5, -5],
+          [5, 5],
+          [-5, 5],
+          [-5, -5]
+        ]
+      ]
+    }
+  };
+  assert.throws(() => validateGeometry(large), /5,000 km²/);
+  const many = {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'LineString',
+      coordinates: Array.from({ length: LIMITS.vertices + 1 }, (_, i) => [-93 + i / 1e7, 44])
+    }
+  };
+  assert.throws(() => validateGeometry(many), /vertices/);
+});
+
+test('computes geodesic overlap and preserves source categories', () => {
+  const overlap = zone([
+    [
+      [-93.265, 44.97],
+      [-93.26, 44.97],
+      [-93.26, 44.98],
+      [-93.265, 44.98],
+      [-93.265, 44.97]
+    ]
+  ]);
+  const result = summarize(sample, [overlap]);
+  assert.equal(result.intersectingCount, 1);
+  assert.ok(result.mappedAreaM2 > 0);
+  assert.ok(Math.abs(result.mappedAreaM2 - laeaReferenceArea(overlap.geometry.coordinates[0])) < 1);
+  assert.equal(result.byClass[0].zone, 'AE');
+  assert.equal(result.byClass[0].sfha, 'T');
+});
+
+test('does not double-count overlapping polygons or duplicate mapped features', () => {
+  const half = zone([
+    [
+      [-93.265, 44.97],
+      [-93.26, 44.97],
+      [-93.26, 44.98],
+      [-93.265, 44.98],
+      [-93.265, 44.97]
+    ]
+  ]);
+  const singleArea = summarize(sample, [half]).mappedAreaM2;
+  const duplicateArea = summarize(sample, [half, half]).mappedAreaM2;
+  assert.equal(duplicateArea, singleArea);
+});
+
+test('counts boundary touches and points without inventing polygon area', () => {
+  const adjacent = zone([
+    [
+      [-93.26, 44.97],
+      [-93.25, 44.97],
+      [-93.25, 44.98],
+      [-93.26, 44.98],
+      [-93.26, 44.97]
+    ]
+  ]);
+  const result = summarize(sample, [adjacent]);
+  assert.equal(result.intersectingCount, 1);
+  assert.equal(result.mappedAreaM2, 0);
+  const point = {
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'Point', coordinates: [-93.265, 44.975] }
+  };
+  assert.equal(summarize(point, [zone(sample.geometry.coordinates)]).intersectingCount, 1);
+  assert.equal(summarize(point, [zone(sample.geometry.coordinates)]).mappedAreaM2, 0);
+});
+
+test('enforces a returned-feature ceiling', () => {
+  assert.throws(
+    () => summarize(sample, Array(LIMITS.features + 1).fill(zone(sample.geometry.coordinates))),
+    /too many features/
+  );
+});

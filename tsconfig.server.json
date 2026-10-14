@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "outDir": "server-dist",
+    "rootDir": ".",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node", "geojson"]
+  },
+  "include": ["server/**/*.ts", "shared/**/*.ts"]
+}
