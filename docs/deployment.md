@@ -1,6 +1,8 @@
 # Deployment
 
-FloodSense is live at [floodsense-rosy.vercel.app](https://floodsense-rosy.vercel.app/). Vercel serves the Vite frontend and rewrites `/api/*` to the free Render API at `floodsense-shxs.onrender.com`. Render builds the repository's Dockerfile through the free `render.yaml` Blueprint. The API accepts the exact Vercel origin and its own origin, with one trusted Render proxy hop. There is no database, login, secret, or paid data product. Render free services spin down while idle, so the first analysis after inactivity can take 50 seconds or more; review the [current free-plan details](https://render.com/docs/free). The public-repository Blueprint requires a manual deployment of new backend commits.
+FloodSense is live at [floodsense-rosy.vercel.app](https://floodsense-rosy.vercel.app/). Vercel serves the Vite frontend from `public/` and runs the Express API as a Vercel Function; `npm run build:vercel` creates both outputs. The API and browser are same-origin. There is no database, login, secret, or paid data product. The former Render service is a Docker fallback, not part of the public Vercel request path. The Vercel deployment is connected to GitHub `main`.
+
+Vercel Functions have a [4.5 MB request/response payload limit](https://vercel.com/docs/functions/limitations), so FloodSense rejects analysis responses above 4 MB and restricts request bodies to 1.2 MB. Function instances are ephemeral and can scale independently: the five-minute FEMA cache, 30-request limiter, and four-query concurrency guard apply per instance, not globally. This is suitable for a small public demo, not a shared operational quota. Vercel's [Hobby limits](https://vercel.com/docs/plans/hobby) and third-party FEMA availability still apply.
 
 ## Run the production container
 
@@ -15,7 +17,7 @@ Visit `http://localhost:4173`. `VITE_TILE_URL` configures one HTTPS XYZ tile tem
 
 - `GET /api/health` returns a small readiness response; it does not verify third-party availability.
 - Check live FEMA behavior through the app’s visible source state, not the health endpoint.
-- FEMA result cache and request counters are per-process, in-memory, and lost at restart. No scheduled refresh runs. Each new uncached query retrieves current service data; the UI displays retrieval time and cached status.
+- FEMA result cache and request counters are per-instance, in-memory, and lost at restart. No scheduled refresh runs. Each new uncached query retrieves current service data; the UI displays retrieval time and cached status.
 - Monitor provider errors and rate-limit responses without recording search strings, AOI coordinates, or request bodies.
 - Recheck FEMA/Census/OSM terms and API behavior before increasing limits or adding a source.
-- The included Render blueprint uses the free web plan; do not attach a paid service without the user's approval. TLS and public availability depend on the selected operator/host; deployment still needs a user-owned host connection.
+- The included Render blueprint remains available for Docker hosting. Do not attach a paid service without the user's approval. TLS and public availability depend on the selected operator/host; deployment still needs a user-owned host connection.

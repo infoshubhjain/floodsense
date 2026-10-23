@@ -24,7 +24,7 @@ Coordinates are accepted only as two-dimensional longitude/latitude in EPSG:4326
 | Geometry envelope               |                                           5° × 5° |
 | Returned FEMA features          |      500; larger/truncated responses are rejected |
 | Provider response body          |                                              8 MB |
-| Analysis response body          |                                              5 MB |
+| Analysis response body          |                                              4 MB |
 | Provider timeout                |              8 seconds total, including one retry |
 | Concurrent live FEMA queries    |                              4 per server process |
 | API requests                    |              30 per minute per observed client IP |

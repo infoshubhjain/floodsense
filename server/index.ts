@@ -344,7 +344,7 @@ app.post('/api/analyze', async (req, res) => {
           : 'User-supplied GeoJSON intersected with FEMA NFHL mapped polygons'
       };
     const bytes = Buffer.byteLength(JSON.stringify(result));
-    if (bytes > 5_000_000)
+    if (bytes > 4_000_000)
       return res.status(422).json({
         error:
           'Analysis response exceeded the display size limit. Draw a smaller area and try again.'
