@@ -165,11 +165,7 @@ app.get('/api/geocode', async (req, res) => {
       coordinates: [match.coordinates.x, match.coordinates.y],
       source: 'U.S. Census Bureau Geocoder; address-range match'
     });
-  } catch (error) {
-    console.error(
-      'Flood analysis failed:',
-      error instanceof Error ? error.message : 'Unknown error'
-    );
+  } catch {
     res.status(502).json({
       error: 'Address search is temporarily unavailable. You can enter coordinates or use the map.'
     });
@@ -316,7 +312,11 @@ app.post('/api/analyze', async (req, res) => {
       }
     }
     res.json(result);
-  } catch {
+  } catch (error) {
+    console.error(
+      'FEMA analysis failed:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     res.status(502).json({
       error:
         'FEMA data could not be reached. No substitute data was used. Select synthetic demo mode to view clearly labeled sample shapes.'
