@@ -79,13 +79,22 @@ function FloodMap({
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     const streets = L.tileLayer(tileUrl, {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
-    const imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: 'Imagery &copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community'
-    });
-    L.control.layers({ 'Street map': streets, 'Satellite imagery': imagery }, undefined, { collapsed: true }).addTo(map);
+    const imagery = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        maxZoom: 19,
+        attribution:
+          'Imagery &copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community'
+      }
+    );
+    L.control
+      .layers({ 'Street map': streets, 'Satellite imagery': imagery }, undefined, {
+        collapsed: true
+      })
+      .addTo(map);
     const tileWarning = new L.Control({ position: 'topright' });
     tileWarning.onAdd = () => {
       const node = L.DomUtil.create('div', 'basemap-warning');
@@ -97,8 +106,12 @@ function FloodMap({
       streets.on('tileload', () => {
         node.hidden = true;
       });
-      imagery.on('tileerror', () => { node.hidden = false; });
-      imagery.on('tileload', () => { node.hidden = true; });
+      imagery.on('tileerror', () => {
+        node.hidden = false;
+      });
+      imagery.on('tileload', () => {
+        node.hidden = true;
+      });
       return node;
     };
     tileWarning.addTo(map);
@@ -478,8 +491,8 @@ function App() {
               </button>
             </form>
             <p className="search-disclosure">
-              Address searches go to the U.S. Census Geocoder; live geometry goes to FEMA;
-              The selected basemap receives tile requests. FloodSense does not store selections.
+              Address searches go to the U.S. Census Geocoder; live geometry goes to FEMA; The
+              selected basemap receives tile requests. FloodSense does not store selections.
             </p>
             <div className="asset-upload">
               <label htmlFor="asset-file">
@@ -974,7 +987,11 @@ function App() {
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
             © OpenStreetMap
           </a>
-          <a href="https://support.esri.com/en-us/knowledge-base/what-is-the-correct-way-to-cite-an-arcgis-online-basema-000012040" target="_blank" rel="noreferrer">
+          <a
+            href="https://support.esri.com/en-us/knowledge-base/what-is-the-correct-way-to-cite-an-arcgis-online-basema-000012040"
+            target="_blank"
+            rel="noreferrer"
+          >
             Imagery © Esri
           </a>
           <a
