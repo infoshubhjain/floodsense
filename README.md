@@ -1,5 +1,7 @@
 # FloodSense
 
+**Live demo:** [floodsense-shxs.onrender.com](https://floodsense-shxs.onrender.com/)
+
 FloodSense is a map-based screening tool for exploring mapped flood-zone overlap around places and infrastructure. It is an educational screening application, **not** an official flood determination, emergency warning, insurance decision, engineering study, or substitute for local authorities.
 
 The starting sample is Downtown Minneapolis with an explicitly labeled synthetic example, so the first visit works without an external provider. Choose FEMA effective flood zones for live results. Search a US street address with the U.S. Census Geocoder, or enter `longitude, latitude` in EPSG:4326. Draw a point, line, or polygon on the map, or use the GeoJSON editor as a keyboard-operable alternative. Optionally load a bounded GeoJSON FeatureCollection (up to 500 point, line, or polygon assets / 1 MB) to screen user-supplied buildings, roads, or facilities against the returned polygons.

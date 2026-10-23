@@ -1,6 +1,6 @@
 # Deployment
 
-FloodSense has a single Node server and a static Vite build. There is no database, login, secret, paid data product, or separate spatial service. The repository includes a production Dockerfile and `render.yaml` for an optional free Render Blueprint. Connect this repository and explicitly create the service to deploy it. No hosting account was connected from this workspace, so there is no live URL yet. Render free services can spin down while idle and have usage limits; review the [current free-plan details](https://render.com/docs/free) before deployment.
+FloodSense is live at [floodsense-shxs.onrender.com](https://floodsense-shxs.onrender.com/). Render builds the repository's Dockerfile through the free `render.yaml` Blueprint and serves the API and Vite frontend from one Node process. There is no database, login, secret, paid data product, or separate spatial service. The public health endpoint and synthetic analysis were verified after deployment. Render free services spin down while idle and have usage limits; review the [current free-plan details](https://render.com/docs/free). Because this Blueprint uses the public repository URL rather than a GitHub integration, backend changes require a manual Blueprint sync.
 
 ## Run the production container
 
