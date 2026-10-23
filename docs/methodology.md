@@ -43,3 +43,7 @@ This application does not provide life-safety guidance. Consult official FEMA ma
 ## Validation record
 
 Tests use small synthetic GeoJSON fixtures and Turf operations. They cover coordinate limits, self-crossing polygons, area/vertex/envelope caps, geometry boundary contact, point/polygon intersection, class metadata, duplicate-zone area union, asset collection limits and zone intersections, malformed provider features, provider errors, provider transfer limits, and source-mode requirements. One polygon fixture is compared with an independent Lambert Azimuthal Equal-Area projection reference calculation; the absolute area tolerance is 1 m². The live Minneapolis sample also returned Zone X and AE polygons. The live-area result is a screening overlay, not an independent official determination; no separate desktop GIS result was available.
+
+# Live geometry transfer
+
+FloodSense requests FEMA polygons with a maximum generalization offset of 0.000005 degrees in EPSG:4326 (about 0.6 m north–south). This reduces transfer size and server work; mapped boundaries and calculated overlap areas may differ slightly from the full precision service geometry. Treat the output as screening, and use the effective FEMA panel for parcel decisions.

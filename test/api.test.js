@@ -128,6 +128,7 @@ test('live adapter pins FEMA fields and requests NAD83 source output in EPSG:432
   assert.equal(providerUrl.searchParams.get('outSR'), '4326');
   assert.equal(providerUrl.searchParams.get('geometryType'), 'esriGeometryPoint');
   assert.equal(providerUrl.searchParams.get('outFields'), 'FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID');
+  assert.equal(providerUrl.searchParams.get('maxAllowableOffset'), '0.000005');
   assert.deepEqual(result.zones[0].geometry.coordinates[0][0], [-93.27, 44.97]);
   assert.equal(result.byClass[0].sfha, 'T');
   assert.equal(result.assets.uploadedCount, 1);

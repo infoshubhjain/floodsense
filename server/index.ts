@@ -250,6 +250,7 @@ app.post('/api/analyze', async (req, res) => {
         outSR: '4326',
         outFields: 'FLD_ZONE,ZONE_SUBTY,SFHA_TF,DFIRM_ID',
         returnGeometry: 'true',
+        maxAllowableOffset: '0.000005',
         returnExceededLimitFeatures: 'true',
         resultRecordCount: String(LIMITS.features + 1),
         f: 'geojson'
@@ -277,7 +278,7 @@ app.post('/api/analyze', async (req, res) => {
         spatialReference:
           'Service source EPSG:4269 (NAD83); service output EPSG:4326. Areas are geodesic.',
         maxResolution:
-          'Vector polygons; map scale varies by effective panel (not a uniform raster resolution)',
+          'Vector polygons generalized by FEMA with a maximum 0.000005° offset (about 0.6 m latitude); panel scale varies',
         effectiveDate:
           'Varies by DFIRM map panel; use the FEMA Map Service Center for the effective panel and date.'
       };
