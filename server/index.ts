@@ -336,5 +336,5 @@ app.use((error: { status?: number }, _req: Request, res: Response, _next: NextFu
   });
 });
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  app.listen(PORT, () => console.log(`FloodSense API ready on http://localhost:${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`FloodSense API ready on port ${PORT}`));
 }
