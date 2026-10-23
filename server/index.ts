@@ -165,7 +165,11 @@ app.get('/api/geocode', async (req, res) => {
       coordinates: [match.coordinates.x, match.coordinates.y],
       source: 'U.S. Census Bureau Geocoder; address-range match'
     });
-  } catch {
+  } catch (error) {
+    console.error(
+      'Flood analysis failed:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     res.status(502).json({
       error: 'Address search is temporarily unavailable. You can enter coordinates or use the map.'
     });
