@@ -2,5 +2,7 @@
 .env
 node_modules
 dist
+server-dist
+public
 playwright-report
 test-results

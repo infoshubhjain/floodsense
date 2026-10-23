@@ -76,6 +76,7 @@ test('rejects malformed provider flood-zone features rather than treating them a
     /malformed flood-zone/
   );
   assert.deepEqual(validateProviderZones([]), []);
+  assert.throws(() => validateProviderZones([zone([])]), /malformed polygon coordinates/);
   assert.throws(
     () =>
       validateProviderZones([

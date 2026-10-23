@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"tsx watch server/index.ts\"",
     "build": "vite build && tsc -p tsconfig.server.json",
+    "build:vercel": "npm run build && rm -rf public && cp -R dist public",
     "start": "node server-dist/server/index.js",
     "test": "node --import tsx --test test/analysis.test.js test/api.test.js",
     "test:e2e": "playwright test",

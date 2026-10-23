@@ -204,7 +204,9 @@ export function validateProviderZones(input: unknown): ZoneFeature[] {
       typeof zone.properties !== 'object'
     )
       throw new Error('FEMA returned a malformed flood-zone feature.');
-    for (const ring of zone.geometry.coordinates || []) {
+    if (!Array.isArray(zone.geometry.coordinates) || !zone.geometry.coordinates.length)
+      throw new Error('FEMA returned malformed polygon coordinates.');
+    for (const ring of zone.geometry.coordinates) {
       if (!Array.isArray(ring)) throw new Error('FEMA returned malformed polygon coordinates.');
       vertices += ring.length;
       if (

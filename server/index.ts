@@ -35,7 +35,7 @@ let liveQueries = 0;
 const MAX_PROVIDER_BYTES = 8_000_000;
 const MAX_ASSET_BYTES = 1_000_000;
 const TTL = 5 * 60_000;
-const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? (process.env.VERCEL ? 1 : 0));
 if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5)
   throw new Error('TRUST_PROXY_HOPS must be an integer from 0 to 5.');
 
@@ -258,6 +258,7 @@ app.post('/api/analyze', async (req, res) => {
       .status(503)
       .json({ error: 'FEMA is currently handling other screening requests. Try again shortly.' });
   if (!useSynthetic) liveQueries++;
+  let providerLoaded = useSynthetic;
   try {
     let zones: ZoneFeature[], source: SourceMetadata;
     if (useSynthetic) {
@@ -299,6 +300,7 @@ app.post('/api/analyze', async (req, res) => {
       };
       if (data.error) throw new Error('FEMA reported a query error.');
       zones = validateProviderZones(data.features);
+      providerLoaded = true;
       if (data.exceededTransferLimit || zones.length > LIMITS.features)
         return res.status(422).json({
           error:
@@ -357,12 +359,13 @@ app.post('/api/analyze', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error(
-      'FEMA analysis failed:',
+      'FloodSense analysis failed:',
       error instanceof Error ? error.message : 'Unknown error'
     );
     res.status(502).json({
-      error:
-        'FEMA data could not be reached. No substitute data was used. Select synthetic demo mode to view clearly labeled sample shapes.'
+      error: providerLoaded
+        ? 'Spatial analysis could not finish. Draw a smaller area or try again shortly.'
+        : 'FEMA data could not be reached. No substitute data was used. Select synthetic demo mode to view clearly labeled sample shapes.'
     });
   } finally {
     if (!useSynthetic) liveQueries--;
