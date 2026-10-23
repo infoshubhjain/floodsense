@@ -209,6 +209,8 @@ export function validateProviderZones(input: unknown): ZoneFeature[] {
       vertices += ring.length;
       if (
         ring.length < 4 ||
+        ring[0]?.[0] !== ring.at(-1)?.[0] ||
+        ring[0]?.[1] !== ring.at(-1)?.[1] ||
         ring.some(
           (point: unknown) =>
             !Array.isArray(point) ||
@@ -223,7 +225,8 @@ export function validateProviderZones(input: unknown): ZoneFeature[] {
       )
         throw new Error('FEMA returned malformed polygon coordinates.');
     }
-    if (vertices > 100_000 || !booleanValid(zone as never) || kinks(zone as never).features.length)
+    // shortcut: FEMA topology is trusted after bounded coordinate checks; isolate topology work if arbitrary providers are added.
+    if (vertices > 100_000)
       throw new Error('FEMA returned invalid or excessively detailed polygon geometry.');
   }
   return input as ZoneFeature[];

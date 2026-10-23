@@ -76,6 +76,26 @@ test('rejects malformed provider flood-zone features rather than treating them a
     /malformed flood-zone/
   );
   assert.deepEqual(validateProviderZones([]), []);
+  assert.throws(
+    () =>
+      validateProviderZones([
+        zone([
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 1]
+          ]
+        ])
+      ]),
+    /malformed polygon coordinates/
+  );
+  const detailed = Array.from({ length: 10_000 }, (_, i) => [
+    Math.cos((i * 2 * Math.PI) / 10_000),
+    Math.sin((i * 2 * Math.PI) / 10_000)
+  ]);
+  detailed.push(detailed[0]);
+  assert.equal(validateProviderZones([zone([detailed])]).length, 1);
 });
 
 function laeaReferenceArea(ring) {
