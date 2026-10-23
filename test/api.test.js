@@ -1,7 +1,8 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { app } from '../server/index.js';
+import { createServer } from 'node:http';
+import { app, getJson } from '../server/index.js';
 
 const nativeFetch = globalThis.fetch;
 let server, origin;
@@ -23,6 +24,25 @@ const input = {
   },
   mode: 'live'
 };
+
+test('provider timeout covers a stalled response body', async () => {
+  const stalled = await new Promise((resolve) => {
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.write('{');
+    });
+    server.listen(0, '127.0.0.1', () => resolve(server));
+  });
+  try {
+    await assert.rejects(
+      getJson(`http://127.0.0.1:${stalled.address().port}/`, 50),
+      /abort|timeout/i
+    );
+  } finally {
+    stalled.closeAllConnections();
+    stalled.close();
+  }
+});
 
 test('API reports provider failure without substituting synthetic data', async () => {
   globalThis.fetch = async (url) =>

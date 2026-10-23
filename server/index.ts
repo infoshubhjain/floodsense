@@ -79,17 +79,18 @@ function withinRateLimit(req: Request) {
   return true;
 }
 
-async function getJson(
+export async function getJson(
   url: string | URL,
   timeoutMs = 8_000,
   maxBytes = MAX_PROVIDER_BYTES
 ): Promise<any> {
   const deadline = Date.now() + timeoutMs;
+  const signal = AbortSignal.timeout(timeoutMs);
   let response: globalThis.Response | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       response = await fetch(url, {
-        signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+        signal,
         headers: { Accept: 'application/json' }
       });
       if (![429, 502, 503, 504].includes(response.status) || attempt === 1) break;
