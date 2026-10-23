@@ -1,5 +1,6 @@
 import express from 'express';
 import { createHash } from 'node:crypto';
+import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -39,6 +40,42 @@ if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5)
   throw new Error('TRUST_PROXY_HOPS must be an integer from 0 to 5.');
 
 export { app };
+
+function computeLive(
+  geometry: FloodFeature,
+  zones: ZoneFeature[],
+  assets?: ReturnType<typeof validateAssets>
+): Promise<{
+  summary: ReturnType<typeof summarize>;
+  assets?: ReturnType<typeof analyzeAssets>;
+}> {
+  return new Promise((resolve, reject) => {
+    const script = new URL(
+      import.meta.url.endsWith('.ts') ? './analysis-worker.ts' : './analysis-worker.js',
+      import.meta.url
+    );
+    const worker = new Worker(script, { workerData: { geometry, zones, assets } });
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new Error('Spatial analysis timed out.'));
+    }, 20_000);
+    worker.once('message', (result) => {
+      clearTimeout(timer);
+      resolve(result);
+    });
+    worker.once('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    worker.once('exit', (code) => {
+      if (code !== 0) {
+        clearTimeout(timer);
+        reject(new Error(`Spatial worker exited with code ${code}.`));
+      }
+    });
+  });
+}
+
 app.disable('x-powered-by');
 app.set('trust proxy', proxyHops);
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -283,18 +320,23 @@ app.post('/api/analyze', async (req, res) => {
           'Varies by DFIRM map panel; use the FEMA Map Service Center for the effective panel and date.'
       };
     }
-    const summary = summarize(geometry, zones);
+    const computed = useSynthetic
+      ? {
+          summary: summarize(geometry, zones),
+          assets: assets && analyzeAssets(geometry, zones, assets)
+        }
+      : await computeLive(geometry, zones, assets);
     const result: AnalysisResult = {
       geometry,
       zones,
-      ...summary,
+      ...computed.summary,
       source,
       mode: useSynthetic ? 'synthetic' : 'live',
       cached: false
     };
     if (assets)
       result.assets = {
-        ...analyzeAssets(geometry, zones, assets),
+        ...computed.assets!,
         source: useSynthetic
           ? 'User-supplied GeoJSON intersected with explicitly selected synthetic demonstration polygons'
           : 'User-supplied GeoJSON intersected with FEMA NFHL mapped polygons'
