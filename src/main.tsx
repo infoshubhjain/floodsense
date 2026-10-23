@@ -4,14 +4,14 @@ import L from 'leaflet';
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import 'leaflet/dist/leaflet.css';
 import './style.css';
-import type { AnalysisResult, FloodFeature, ZoneFeature } from '../shared/types.js';
+import type { AnalysisResult, FloodFeature, ZoneFeature, ZoneSummary } from '../shared/types.js';
 
 type DrawMode = '' | 'point' | 'line' | 'polygon';
 type MapHandle = L.Map & { finishFloodSense: () => FloodFeature | null };
 type MapProps = {
   geometry: FloodFeature;
   zones: ZoneFeature[];
-  selectedZone: string | null;
+  selectedClass: Pick<ZoneSummary, 'zone' | 'subtype'> | null;
   center: [number, number];
   zoom: number;
   drawMode: DrawMode;
@@ -44,7 +44,7 @@ const fmt = (m2: number) =>
 function FloodMap({
   geometry,
   zones,
-  selectedZone,
+  selectedClass,
   center,
   zoom,
   drawMode,
@@ -187,20 +187,20 @@ function FloodMap({
     if (overlay.current) mapRef.current.removeLayer(overlay.current);
     overlay.current = zones?.length
       ? L.geoJSON({ type: 'FeatureCollection', features: zones } as FeatureCollection, {
-          style: (f) => ({
-            color:
-              f?.properties?.FLD_ZONE === selectedZone
-                ? '#a04424'
-                : f?.properties?.SFHA_TF === 'T'
-                  ? '#087e89'
-                  : '#9274c5',
-            weight: f?.properties?.FLD_ZONE === selectedZone ? 3 : 1.25,
-            fillColor: f?.properties?.SFHA_TF === 'T' ? '#41c1c5' : '#a58be0',
-            fillOpacity: selectedZone && f?.properties?.FLD_ZONE !== selectedZone ? 0.09 : 0.31
-          })
+          style: (f) => {
+            const matches =
+              selectedClass?.zone === (f?.properties?.FLD_ZONE || 'Unknown') &&
+              selectedClass?.subtype === (f?.properties?.ZONE_SUBTY || null);
+            return {
+              color: matches ? '#a04424' : f?.properties?.SFHA_TF === 'T' ? '#087e89' : '#9274c5',
+              weight: matches ? 3 : 1.25,
+              fillColor: f?.properties?.SFHA_TF === 'T' ? '#41c1c5' : '#a58be0',
+              fillOpacity: selectedClass && !matches ? 0.09 : 0.31
+            };
+          }
         }).addTo(mapRef.current)
       : null;
-  }, [zones, selectedZone]);
+  }, [zones, selectedClass]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -256,7 +256,9 @@ function App() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [mode, setMode] = useState<'live' | 'synthetic'>('synthetic');
   const [showZones, setShowZones] = useState(true);
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [selectedClass, setSelectedClass] = useState<Pick<ZoneSummary, 'zone' | 'subtype'> | null>(
+    null
+  );
   const [drawMode, setDrawMode] = useState<DrawMode>('');
   const [center, setCenter] = useState<[number, number]>([44.98, -93.265]);
   const [zoom, setZoom] = useState(13);
@@ -278,7 +280,7 @@ function App() {
       setBusy(true);
       setError('');
       setResult(null);
-      setSelectedZone(null);
+      setSelectedClass(null);
       try {
         const res = await fetch('/api/analyze', {
           method: 'POST',
@@ -623,7 +625,7 @@ function App() {
             <FloodMap
               geometry={geometry}
               zones={showZones ? result?.zones || [] : []}
-              selectedZone={selectedZone}
+              selectedClass={selectedClass}
               center={center}
               zoom={zoom}
               drawMode={drawMode}
@@ -653,6 +655,15 @@ function App() {
                 {mode === 'synthetic' ? 'SYNTHETIC DEMO SHAPES' : 'FEMA MAPPED ZONES'}
               </span>
               <span className="map-tag muted-tag">EPSG:4326 · WGS 84</span>
+              {selectedClass && (
+                <button
+                  className="map-tag selected-map-class"
+                  onClick={() => setSelectedClass(null)}
+                >
+                  Highlight: Zone {selectedClass.zone}
+                  {selectedClass.subtype ? ` · ${selectedClass.subtype}` : ''} ×
+                </button>
+              )}
             </div>
             <div className="legend">
               <strong>MAP KEY</strong>
@@ -851,8 +862,8 @@ function App() {
                   <span>MAP ZONE INSPECTOR · SELECT A CLASS TO HIGHLIGHT</span>
                   <span>{counts.length} CLASSES</span>
                 </div>
-                {selectedZone && (
-                  <button className="clear-zone" onClick={() => setSelectedZone(null)}>
+                {selectedClass && (
+                  <button className="clear-zone" onClick={() => setSelectedClass(null)}>
                     Clear zone highlight ×
                   </button>
                 )}
@@ -861,8 +872,21 @@ function App() {
                     <button
                       className="zone-row zone-select"
                       type="button"
-                      aria-pressed={selectedZone === item.zone}
-                      onClick={() => setSelectedZone(selectedZone === item.zone ? null : item.zone)}
+                      aria-pressed={
+                        selectedClass?.zone === item.zone && selectedClass.subtype === item.subtype
+                      }
+                      onClick={() => {
+                        setShowZones(true);
+                        setSelectedClass(
+                          selectedClass?.zone === item.zone &&
+                            selectedClass.subtype === item.subtype
+                            ? null
+                            : { zone: item.zone, subtype: item.subtype }
+                        );
+                        requestAnimationFrame(() =>
+                          document.querySelector('.map-wrap')?.scrollIntoView({ block: 'start' })
+                        );
+                      }}
                       key={`${item.zone}-${item.subtype}-${i}`}
                     >
                       <i className={`zone-swatch ${item.sfha === 'T' ? 'sfha' : 'other'}`} />

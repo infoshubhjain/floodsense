@@ -11,8 +11,15 @@ test('sample area → explicit demo source → metadata → provenance export', 
   const zone = page.locator('.zone-select').first();
   await zone.click();
   await expect(zone).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.selected-map-class')).toContainText('Highlight: Zone');
+  await expect(page.locator('.leaflet-overlay-pane path[stroke="#a04424"]')).toHaveCount(1);
+  expect((await page.locator('.map-wrap').boundingBox()).y).toBeGreaterThanOrEqual(0);
   await page.getByRole('button', { name: 'Clear zone highlight ×' }).click();
   await expect(zone).toHaveAttribute('aria-pressed', 'false');
+  await zone.focus();
+  await page.keyboard.press('Enter');
+  await expect(zone).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Clear zone highlight ×' }).click();
   await page.locator('.leaflet-control-layers-toggle').click({ force: true });
   await page.getByLabel('Satellite imagery').check();
   await page.getByLabel('Street map').check();
@@ -38,6 +45,26 @@ test('sample area → explicit demo source → metadata → provenance export', 
   expect(exported.properties.source.name).toContain('synthetic');
   expect(exported.properties.disclaimer).toContain('not an official flood determination');
   expect(exported.features[0].geometry.type).toBe('Polygon');
+});
+
+test('zone classes with the same code remain independently selectable', async ({ page }) => {
+  await page.route('**/api/analyze', async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    data.zones.push({
+      ...data.zones[0],
+      properties: { ...data.zones[0].properties, ZONE_SUBTY: 'Alternate subtype' }
+    });
+    data.byClass.push({ ...data.byClass[0], subtype: 'Alternate subtype' });
+    await route.fulfill({ response, json: data });
+  });
+  await page.goto('/');
+  const rows = page.locator('.zone-select').filter({ hasText: 'Zone AE' });
+  await expect(rows).toHaveCount(2);
+  await rows.first().click();
+  await expect(rows.first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(rows.last()).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.leaflet-overlay-pane path[stroke="#a04424"]')).toHaveCount(1);
 });
 
 test('text alternative accepts a point and the zone overlay control works', async ({ page }) => {

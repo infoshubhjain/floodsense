@@ -1744,3 +1744,20 @@ body {
     box-shadow: 3px 3px 0 #d0dce2;
   }
 }
+.map-top-tags {
+  max-width: calc(100% - 28px);
+  flex-wrap: wrap;
+}
+.selected-map-class {
+  height: auto;
+  min-height: 25px;
+  border: 1px solid #a04424;
+  background: #fff1e8;
+  color: #7b351e;
+  font: 700 10px var(--mono);
+  cursor: pointer;
+}
+.selected-map-class:focus-visible {
+  outline: 3px solid #a04424;
+  outline-offset: 2px;
+}
