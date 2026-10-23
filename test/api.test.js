@@ -179,3 +179,23 @@ test('same-origin checks accept HTTPS forwarded by an explicitly trusted proxy',
     app.set('trust proxy', previous);
   }
 });
+
+test('exact frontend origin does not disable same-origin API access', async () => {
+  const previous = process.env.ALLOWED_ORIGIN;
+  process.env.ALLOWED_ORIGIN = 'https://floodsense-rosy.vercel.app';
+  try {
+    const frontend = await nativeFetch(`${origin}/api/health`, {
+      headers: { Origin: 'https://floodsense-rosy.vercel.app' }
+    });
+    assert.equal(frontend.status, 200);
+    const direct = await nativeFetch(`${origin}/api/health`, { headers: { Origin: origin } });
+    assert.equal(direct.status, 200);
+    const unrelated = await nativeFetch(`${origin}/api/health`, {
+      headers: { Origin: 'https://unrelated.example' }
+    });
+    assert.equal(unrelated.status, 403);
+  } finally {
+    if (previous === undefined) delete process.env.ALLOWED_ORIGIN;
+    else process.env.ALLOWED_ORIGIN = previous;
+  }
+});

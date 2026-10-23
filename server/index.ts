@@ -48,11 +48,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     'Content-Security-Policy': `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${tileOrigins}; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`
   });
   const origin = req.get('origin');
-  const allowed = process.env.ALLOWED_ORIGIN
-    ? origin === process.env.ALLOWED_ORIGIN
-    : !origin ||
-      origin === `${req.protocol}://${req.get('host')}` ||
-      origin === 'http://localhost:5173';
+  const allowed =
+    !origin ||
+    origin === `${req.protocol}://${req.get('host')}` ||
+    origin === process.env.ALLOWED_ORIGIN ||
+    (process.env.NODE_ENV !== 'production' && origin === 'http://localhost:5173');
   if (!allowed) return res.status(403).json({ error: 'Origin not allowed.' });
   if (origin) res.set('Access-Control-Allow-Origin', origin).set('Vary', 'Origin');
   if (req.method === 'OPTIONS')

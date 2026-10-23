@@ -1,6 +1,6 @@
 # Deployment
 
-FloodSense is live at [floodsense-shxs.onrender.com](https://floodsense-shxs.onrender.com/). Render builds the repository's Dockerfile through the free `render.yaml` Blueprint and serves the API and Vite frontend from one Node process. There is no database, login, secret, paid data product, or separate spatial service. The public health endpoint and synthetic analysis were verified after deployment. Render free services spin down while idle and have usage limits; review the [current free-plan details](https://render.com/docs/free). Because this Blueprint uses the public repository URL rather than a GitHub integration, backend changes require a manual Blueprint sync.
+FloodSense is live at [floodsense-rosy.vercel.app](https://floodsense-rosy.vercel.app/). Vercel serves the Vite frontend and rewrites `/api/*` to the free Render API at `floodsense-shxs.onrender.com`. Render builds the repository's Dockerfile through the free `render.yaml` Blueprint. The API accepts the exact Vercel origin and its own origin, with one trusted Render proxy hop. There is no database, login, secret, or paid data product. Render free services spin down while idle, so the first analysis after inactivity can take 50 seconds or more; review the [current free-plan details](https://render.com/docs/free). The public-repository Blueprint requires a manual deployment of new backend commits.
 
 ## Run the production container
 
