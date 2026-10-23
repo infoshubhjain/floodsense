@@ -5,9 +5,14 @@ import { expect, test } from '@playwright/test';
 
 test('sample area → explicit demo source → metadata → provenance export', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Flood exposure' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Flood atlas' })).toBeVisible();
   await expect(page.getByText('SYNTHETIC DEMO · NOT FEMA DATA')).toBeVisible();
   await expect(page.getByText('Area within synthetic demo shapes')).toBeVisible();
+  const zone = page.locator('.zone-select').first();
+  await zone.click();
+  await expect(zone).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Clear zone highlight ×' }).click();
+  await expect(zone).toHaveAttribute('aria-pressed', 'false');
   await page.locator('.leaflet-control-layers-toggle').click({ force: true });
   await page.getByLabel('Satellite imagery').check();
   await page.getByLabel('Street map').check();

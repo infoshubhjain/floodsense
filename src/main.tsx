@@ -11,6 +11,7 @@ type MapHandle = L.Map & { finishFloodSense: () => FloodFeature | null };
 type MapProps = {
   geometry: FloodFeature;
   zones: ZoneFeature[];
+  selectedZone: string | null;
   center: [number, number];
   zoom: number;
   drawMode: DrawMode;
@@ -43,6 +44,7 @@ const fmt = (m2: number) =>
 function FloodMap({
   geometry,
   zones,
+  selectedZone,
   center,
   zoom,
   drawMode,
@@ -186,14 +188,19 @@ function FloodMap({
     overlay.current = zones?.length
       ? L.geoJSON({ type: 'FeatureCollection', features: zones } as FeatureCollection, {
           style: (f) => ({
-            color: f?.properties?.SFHA_TF === 'T' ? '#087e89' : '#9274c5',
-            weight: 1.25,
+            color:
+              f?.properties?.FLD_ZONE === selectedZone
+                ? '#a04424'
+                : f?.properties?.SFHA_TF === 'T'
+                  ? '#087e89'
+                  : '#9274c5',
+            weight: f?.properties?.FLD_ZONE === selectedZone ? 3 : 1.25,
             fillColor: f?.properties?.SFHA_TF === 'T' ? '#41c1c5' : '#a58be0',
-            fillOpacity: 0.31
+            fillOpacity: selectedZone && f?.properties?.FLD_ZONE !== selectedZone ? 0.09 : 0.31
           })
         }).addTo(mapRef.current)
       : null;
-  }, [zones]);
+  }, [zones, selectedZone]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -249,6 +256,7 @@ function App() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [mode, setMode] = useState<'live' | 'synthetic'>('synthetic');
   const [showZones, setShowZones] = useState(true);
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [drawMode, setDrawMode] = useState<DrawMode>('');
   const [center, setCenter] = useState<[number, number]>([44.98, -93.265]);
   const [zoom, setZoom] = useState(13);
@@ -270,6 +278,7 @@ function App() {
       setBusy(true);
       setError('');
       setResult(null);
+      setSelectedZone(null);
       try {
         const res = await fetch('/api/analyze', {
           method: 'POST',
@@ -614,6 +623,7 @@ function App() {
             <FloodMap
               geometry={geometry}
               zones={showZones ? result?.zones || [] : []}
+              selectedZone={selectedZone}
               center={center}
               zoom={zoom}
               drawMode={drawMode}
@@ -691,7 +701,7 @@ function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">PLACE SCREENING</p>
-              <h1>Flood exposure</h1>
+              <h1>Flood atlas</h1>
             </div>
             <button
               className="refresh"
@@ -838,12 +848,23 @@ function App() {
               )}
               <div className="class-list">
                 <div className="section-title">
-                  <span>ZONE BREAKDOWN</span>
+                  <span>MAP ZONE INSPECTOR · SELECT A CLASS TO HIGHLIGHT</span>
                   <span>{counts.length} CLASSES</span>
                 </div>
+                {selectedZone && (
+                  <button className="clear-zone" onClick={() => setSelectedZone(null)}>
+                    Clear zone highlight ×
+                  </button>
+                )}
                 {counts.length ? (
                   counts.map((item, i) => (
-                    <div className="zone-row" key={`${item.zone}-${item.subtype}-${i}`}>
+                    <button
+                      className="zone-row zone-select"
+                      type="button"
+                      aria-pressed={selectedZone === item.zone}
+                      onClick={() => setSelectedZone(selectedZone === item.zone ? null : item.zone)}
+                      key={`${item.zone}-${item.subtype}-${i}`}
+                    >
                       <i className={`zone-swatch ${item.sfha === 'T' ? 'sfha' : 'other'}`} />
                       <div className="zone-info">
                         <strong>Zone {item.zone}</strong>
@@ -864,7 +885,7 @@ function App() {
                           <small>{item.sfha === 'T' ? 'SFHA' : 'MAPPED'}</small>
                         )}
                       </div>
-                    </div>
+                    </button>
                   ))
                 ) : (
                   <div className="no-zones">
