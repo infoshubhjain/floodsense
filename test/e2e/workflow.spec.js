@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 test('sample area → explicit demo source → metadata → provenance export', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Flood atlas' })).toBeVisible();
   await expect(page.getByText('SYNTHETIC DEMO · NOT FEMA DATA')).toBeVisible();
@@ -45,6 +47,7 @@ test('sample area → explicit demo source → metadata → provenance export', 
   expect(exported.properties.source.name).toContain('synthetic');
   expect(exported.properties.disclaimer).toContain('not an official flood determination');
   expect(exported.features[0].geometry.type).toBe('Polygon');
+  expect(pageErrors).toEqual([]);
 });
 
 test('zone classes with the same code remain independently selectable', async ({ page }) => {
@@ -65,6 +68,25 @@ test('zone classes with the same code remain independently selectable', async ({
   await expect(rows.first()).toHaveAttribute('aria-pressed', 'true');
   await expect(rows.last()).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('.leaflet-overlay-pane path[stroke="#a04424"]')).toHaveCount(1);
+  await page.locator('.leaflet-overlay-pane path[stroke="#087e89"]').last().click();
+  await expect(rows.first()).toHaveAttribute('aria-pressed', 'false');
+  await expect(rows.last()).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('map polygons select their exact zone class', async ({ page }) => {
+  await page.goto('/');
+  const zone = page.locator('.leaflet-overlay-pane path[stroke="#087e89"]').first();
+  await expect(zone).toBeVisible();
+  await zone.click();
+  await expect(page.locator('.zone-select').filter({ hasText: 'Zone AE' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await expect(page.locator('.selected-map-class')).toContainText('Zone AE');
+  await page.screenshot({ path: 'docs/screenshots/zone-inspection.png', fullPage: true });
+  await page.locator('.map-tool-row .tool').filter({ hasText: 'Point' }).click();
+  await page.locator('.leaflet-overlay-pane path[stroke="#a04424"]').first().click();
+  await expect(page.getByText('Map point')).toBeVisible();
 });
 
 test('text alternative accepts a point and the zone overlay control works', async ({ page }) => {

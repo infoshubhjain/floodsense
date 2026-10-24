@@ -12,6 +12,7 @@ type MapProps = {
   geometry: FloodFeature;
   zones: ZoneFeature[];
   selectedClass: Pick<ZoneSummary, 'zone' | 'subtype'> | null;
+  onSelectClass: (value: Pick<ZoneSummary, 'zone' | 'subtype'>) => void;
   center: [number, number];
   zoom: number;
   drawMode: DrawMode;
@@ -45,6 +46,7 @@ function FloodMap({
   geometry,
   zones,
   selectedClass,
+  onSelectClass,
   center,
   zoom,
   drawMode,
@@ -187,6 +189,14 @@ function FloodMap({
     if (overlay.current) mapRef.current.removeLayer(overlay.current);
     overlay.current = zones?.length
       ? L.geoJSON({ type: 'FeatureCollection', features: zones } as FeatureCollection, {
+          onEachFeature: (feature, layer) =>
+            layer.on('click', () => {
+              if (handlers.current.drawMode) return;
+              onSelectClass({
+                zone: feature.properties.FLD_ZONE || 'Unknown',
+                subtype: feature.properties.ZONE_SUBTY || null
+              });
+            }),
           style: (f) => {
             const matches =
               selectedClass?.zone === (f?.properties?.FLD_ZONE || 'Unknown') &&
@@ -200,20 +210,27 @@ function FloodMap({
           }
         }).addTo(mapRef.current)
       : null;
-  }, [zones, selectedClass]);
+  }, [zones, selectedClass, onSelectClass]);
 
   useEffect(() => {
     if (!mapRef.current) return;
     if (assetOverlay.current) mapRef.current.removeLayer(assetOverlay.current);
     assetOverlay.current = assets.length
       ? L.geoJSON({ type: 'FeatureCollection', features: assets } as FeatureCollection, {
-          style: { color: '#9e641b', weight: 3, fillColor: '#e7af58', fillOpacity: 0.25 },
+          style: {
+            color: '#9e641b',
+            weight: 3,
+            fillColor: '#e7af58',
+            fillOpacity: 0.25,
+            interactive: false
+          },
           pointToLayer: (_feature, latlng) =>
             L.circleMarker(latlng, {
               radius: 6,
               color: '#9e641b',
               fillColor: '#e7af58',
-              fillOpacity: 0.9
+              fillOpacity: 0.9,
+              interactive: false
             })
         }).addTo(mapRef.current)
       : null;
@@ -223,6 +240,7 @@ function FloodMap({
     if (!mapRef.current) return;
     if (drawn.current) mapRef.current.removeLayer(drawn.current);
     drawn.current = L.geoJSON(geometry, {
+      interactive: false,
       style: {
         color: '#173b36',
         weight: 2,
@@ -236,7 +254,8 @@ function FloodMap({
           color: '#173b36',
           weight: 2,
           fillColor: '#e8c368',
-          fillOpacity: 1
+          fillOpacity: 1,
+          interactive: false
         })
     }).addTo(mapRef.current);
   }, [geometry]);
@@ -626,6 +645,7 @@ function App() {
               geometry={geometry}
               zones={showZones ? result?.zones || [] : []}
               selectedClass={selectedClass}
+              onSelectClass={setSelectedClass}
               center={center}
               zoom={zoom}
               drawMode={drawMode}
@@ -859,7 +879,7 @@ function App() {
               )}
               <div className="class-list">
                 <div className="section-title">
-                  <span>MAP ZONE INSPECTOR · SELECT A CLASS TO HIGHLIGHT</span>
+                  <span>MAP ZONE INSPECTOR · SELECT A ROW OR MAP POLYGON</span>
                   <span>{counts.length} CLASSES</span>
                 </div>
                 {selectedClass && (

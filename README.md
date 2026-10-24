@@ -1,12 +1,12 @@
 # FloodSense
 
-[Frontend release audit](docs/frontend-audit.md)
+[Frontend release audit](docs/frontend-audit.md) · [Product design brief](docs/design-brief.md)
 
 **Live demo:** [floodsense-rosy.vercel.app](https://floodsense-rosy.vercel.app/)
 
 FloodSense is a map-based screening tool for exploring mapped flood-zone overlap around places and infrastructure. It is an educational screening application, **not** an official flood determination, emergency warning, insurance decision, engineering study, or substitute for local authorities.
 
-Select a zone class in the analysis sheet to jump to the map and highlight polygons matching its zone code and subtype. The selection changes map emphasis only and does not change the measured overlap.
+Select a zone class in the analysis sheet or click a mapped polygon to highlight the matching zone code and subtype in both places. The selection changes map emphasis only and does not change the measured overlap.
 
 The starting sample is Downtown Minneapolis with an explicitly labeled synthetic example, so the first visit works without an external provider. Choose FEMA effective flood zones for live results. Search a US street address with the U.S. Census Geocoder, or enter `longitude, latitude` in EPSG:4326. Draw a point, line, or polygon on the map, or use the GeoJSON editor as a keyboard-operable alternative. Optionally load a bounded GeoJSON FeatureCollection (up to 500 point, line, or polygon assets / 1 MB) to screen user-supplied buildings, roads, or facilities against the returned polygons.
 
@@ -17,6 +17,8 @@ The screenshot below is from the E2E demo flow. All overlay polygons in this vie
 ![FloodSense synthetic demo screening](docs/screenshots/demo.png)
 
 [Mobile workflow screenshot](docs/screenshots/mobile.png)
+
+[Map-to-zone inspection screenshot](docs/screenshots/zone-inspection.png)
 
 ## Run locally
 
